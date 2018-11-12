@@ -4,7 +4,7 @@
 %if %{__autobuild__}
 %define version PKG_VERSION
 %else
-%define version 0.0.0
+%define version scm-1
 %endif
 %define release %(/bin/date +"%Y%m%d.%H%M")
 %define packagename graphka
