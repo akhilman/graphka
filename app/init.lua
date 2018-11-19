@@ -1,34 +1,59 @@
 local conf = require 'config'
 local log = require 'log'
+local rx = require 'rx'
+local utils = require 'utils'
 
-box.once('access:v1', function()
-    box.schema.user.grant('guest', 'read,write,execute', 'universe')
-    -- Uncomment this to create user graphka_user
-    -- box.schema.user.create('graphka_user', { password = 'graphka_pass' })
-    -- box.schema.user.grant('graphka_user', 'read,write,execute', 'universe')
-end)
+
+local modules = utils.merge_tables(
+    require 'modules.api',
+    require 'modules.echo'
+)
+
+local default_config = {
+  migrations = './migrations'
+}
+
 
 local app = {
-    mod1 = require 'mod1',
+  hub = rx.Subject.create(),
+  config = {},
 }
 
 function app.init(config)
-    log.info('app "graphka" init')
+  log.info('app "graphka" init')
 
-    box.spacer = require 'spacer'({
-        migrations = config.migrations
-    })
-    require 'schema'
+  app.config = utils.merge_tables(default_config, config)
+  box.spacer = require 'spacer'({
+      migrations = app.config.migrations
+  })
+  require 'schema'
 
-    for k, mod in pairs(app) do if type(mod) == 'table' and mod.init ~= nil then mod.init(config) end end
+  local hub = app.hub
+  local sink
+  local source
+  for name, mod in pairs(modules) do
+    log.info('module "' .. name .. '" init')
+    source = hub:filter(function(msg) return msg.to == name end)
+    sink = mod(app.config, source)
+    if sink then
+      sink:subscribe(hub)
+    end
+  end
+
+  --- debug
+  app.hub:dump('hub', require('json').encode)
+  app.hub:onNext({'hello', 'world'})
+
 end
 
 function app.destroy()
-    log.info('app "graphka" destroy')
-
-    for k, mod in pairs(app) do if type(mod) == 'table' and mod.destroy ~= nil then mod.destroy() end end
+  log.info('app "graphka" destroy')
+  app.hub:onCompleted()
 end
 
-package.reload:register(app)
-rawset(_G, 'app', app)
+
+if package.reload then
+  package.reload:register(app)
+end
+-- rawset(_G, 'app', app)
 return app
