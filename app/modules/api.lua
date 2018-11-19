@@ -51,7 +51,7 @@ function modules.api(config, source)
   local api = {}
 
   api.echo = utils.partial(make_request, 'echo', 'echo')
-  api.reload = function() package.reload() end
+  api.reload = function() return pcall(package.reload) end
 
   for k, v in pairs(api) do
     rawset(_G, k, v)
