@@ -5,8 +5,8 @@ local utils = require 'utils'
 
 
 local modules = utils.merge_tables(
-    require 'modules.api',
-    require 'modules.echo'
+    require 'modules.echo' .modules,
+    require 'modules.api' .modules
 )
 
 local default_config = {
@@ -55,5 +55,5 @@ end
 if package.reload then
   package.reload:register(app)
 end
--- rawset(_G, 'app', app)
+rawset(_G, 'app', app)
 return app

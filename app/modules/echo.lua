@@ -1,21 +1,16 @@
+reqrep = require 'reqrep'
 
 local modules = {}
+local methods = {}
 
-function modules.echo(config, source)
-
-  local function reply(msg)
-    return {
-      to = 'api',
-      req_id = msg.req_id,
-      success = true,
-      result = msg.args,
-    }
-  end
-
-  local sink = source:map(reply)
-
-  return sink
-
+function methods.echo(...)
+  return {...}
 end
 
-return modules
+function modules.echo(config, source)
+  return reqrep.dispatch(source, methods)
+end
+
+return {
+  modules = modules
+}
