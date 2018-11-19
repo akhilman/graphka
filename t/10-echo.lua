@@ -10,7 +10,7 @@ local test = tap.test("Echo module")
 test:plan(2)
 
 local success, rep
-success, responce = echo('Hello world!')
+success, responce = graphka.echo('Hello world!')
 test:is(success, true, 'Test echo API method success')
 test:is_deeply(responce, {'Hello world!'}, 'Test echo API method responce')
 

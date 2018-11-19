@@ -53,9 +53,7 @@ function modules.api(config, source)
   api.echo = utils.partial(make_request, 'echo', 'echo')
   api.reload = function() return pcall(package.reload) end
 
-  for k, v in pairs(api) do
-    rawset(_G, k, v)
-  end
+  rawset(_G, 'graphka', api)
 
   --- API ACL
   box.once('access:v1', function()
