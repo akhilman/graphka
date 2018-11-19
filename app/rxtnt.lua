@@ -43,19 +43,19 @@ function rx.Observable:toTable()
   local ret = {}
 
   local function onNext(val)
-    print('onNext', val)
+    -- print('onNext', val)
     table.insert(ret, val)
   end
 
   local function onError(msg)
-    print('onError', msg)
+    -- print('onError', msg)
     err = rx.util.pack(msg)
     stopped = true
     cond:signal()
   end
 
   local function onCompleted()
-    print('onCompleted')
+    -- print('onCompleted')
     stopped = true
     cond:signal()
   end
