@@ -13,7 +13,13 @@ function modules.api(config, source)
 
   local api = {}
 
+  -- echo
   api.echo = utils.partial(make_call, 'echo', 'echo')
+  -- clients
+  api.init_client = utils.partial(make_call, 'clients', 'init_client')
+  api.remove_client = utils.partial(make_call, 'clients', 'remove_client')
+  api.list_clients = utils.partial(make_call, 'clients', 'list_clients')
+  -- reload
   api.reload = function() return pcall(package.reload) end
 
   rawset(_G, 'graphka', api)

@@ -8,7 +8,9 @@ spacer:space({
         { name = 'atime', type = 'number' },
     },
     indexes = {
-        { name = 'primary', type = 'hash', unique = true, parts = { 'client_id' } },
+        { name = 'primary', type = 'hash',
+          unique = true, parts = { 'client_id' },
+          sequence = true},
         { name = 'atime', type = 'tree', unique = false, parts = { 'atime' } },
     },
     opts = {
