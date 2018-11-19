@@ -67,8 +67,6 @@ end
 
 local function call(func, req)
 
-  print('call', func, req)
-
   local success, result = pcall(func, rx.util.unpack(req.args))
 
   return {
