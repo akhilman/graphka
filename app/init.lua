@@ -1,3 +1,4 @@
+local fiber = require 'fiber'
 local conf = require 'config'
 local log = require 'log'
 local rx = require 'rx'
@@ -6,12 +7,12 @@ local utils = require 'utils'
 
 local modules = utils.merge_tables(
     require 'modules.echo' .modules,
-    require 'modules.clients' .modules,
+    require 'modules.session' .modules,
     require 'modules.api' .modules
 )
 
 local default_config = {
-  migrations = './migrations'
+  migrations = './migrations',
 }
 
 
@@ -25,16 +26,18 @@ function app.init(config)
 
   app.config = utils.merge_tables(default_config, config)
   box.spacer = require 'spacer'({
-      migrations = app.config.migrations
+      migrations = app.config.migrations,
   })
   require 'schema'
+  if app.config.automigrate then
+    box.spacer:migrate_up()
+  end
 
   local hub = app.hub
   local sink
-  local source
+  local source = hub
   for name, mod in pairs(modules) do
     log.info('module "' .. name .. '" init')
-    source = hub:filter(function(msg) return msg.to == name end)
     sink = mod(app.config, source)
     if sink then
       sink:subscribe(hub)

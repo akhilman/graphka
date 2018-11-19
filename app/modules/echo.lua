@@ -8,7 +8,7 @@ function methods.echo(...)
 end
 
 function modules.echo(config, source)
-  return reqrep.dispatch(source, methods)
+  return reqrep.dispatch(source, 'echo', methods)
 end
 
 return {

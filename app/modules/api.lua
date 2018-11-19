@@ -7,7 +7,7 @@ local modules = {}
 
 function modules.api(config, source)
 
-  local make_call, sink = reqrep.reqrep('api', source)
+  local make_call, sink = reqrep.reqrep(source, 'api:rep')
 
   --- Public API
 
@@ -15,10 +15,10 @@ function modules.api(config, source)
 
   -- echo
   api.echo = utils.partial(make_call, 'echo', 'echo')
-  -- clients
-  api.init_client = utils.partial(make_call, 'clients', 'init_client')
-  api.remove_client = utils.partial(make_call, 'clients', 'remove_client')
-  api.list_clients = utils.partial(make_call, 'clients', 'list_clients')
+  -- sessions
+  api.list_sessions = utils.partial(make_call, 'session:req', 'list_sessions')
+  api.rename_session = utils.partial(make_call,
+                                     'session:req', 'rename_session')
   -- reload
   api.reload = function() return pcall(package.reload) end
 

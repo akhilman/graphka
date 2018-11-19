@@ -13,5 +13,6 @@ box = {
 }
 
 app = {
-    migrations = './migrations'
+    migrations = './migrations',
+    automigrate = true,
 }

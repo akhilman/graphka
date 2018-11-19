@@ -4,14 +4,21 @@ local utils = require 'utils'
 
 local M = {}
 
-function M.reqrep(caller, source)
+local rep_topic_id = 1
+
+function M.reqrep(source, rep_topic)
+
+  if not rep_topic then
+    rep_topic_id = rep_topic_id + 1
+    rep_topic = 'reqrep:' .. rep_topic_id
+  end
 
   local requests = {}
   local last_id = 0
 
   local sink = rx.Subject.create()
 
-  local function make_call(module, method, ...)
+  local function make_call(topic, method, ...)
     local req_id
     local req
     local args = {...}
@@ -24,9 +31,8 @@ function M.reqrep(caller, source)
     }
     requests[tostring(req_id)] = req
     sink:onNext({
-      to = module,
-      rep_to = caller,
-      subject = 'call',
+      topic = topic,
+      rep_topic = rep_topic,
       method = method,
       req_id = req_id,
       args = args,
@@ -58,7 +64,9 @@ function M.reqrep(caller, source)
   end
 
   source
-    :filter(function(msg) return msg.subject == 're:call' end)
+    :filter(function(msg)
+      return msg.topic == rep_topic
+    end)
     :subscribe(on_respond, on_error, on_error)
 
   return make_call, sink
@@ -70,8 +78,7 @@ local function call(func, req)
   local success, result = pcall(func, rx.util.unpack(req.args))
 
   return {
-    to = req.rep_to,
-    subject = req.subject and 're:'..req.subject or nil,
+    topic = req.rep_topic,
     req_id = req.req_id,
     success = success,
     result = result
@@ -87,12 +94,14 @@ local function resolve(func_map, req)
   return func
 end
 
-function M.dispatch(source, func_map)
+function M.dispatch(source, topic, func_map)
 
   local filtered
   local sink
 
-  filtered = source:filter(function(msg) return msg.subject == 'call' end)
+  filtered = source:filter(function(msg)
+    return msg.topic == topic
+  end)
   sink = filtered
     :map(utils.partial(resolve, func_map))
     :zip(filtered)
