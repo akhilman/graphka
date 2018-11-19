@@ -18,10 +18,10 @@ function M.merge_tables(...)
 end
 
 function M.partial(func, ...)
-  local args = rx.util.pack(...)
+  local prefix_args = rx.util.pack(...)
   return function(...)
-    local full_args = fun.totable(fun.chain(args, {...}))
-    return func(rx.util.unpack(full_args))
+    local args = fun.totable(fun.chain(prefix_args, {...}))
+    return func(rx.util.unpack(args))
   end
 end
 
