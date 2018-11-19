@@ -1,5 +1,6 @@
 local tap = require 'tap'
 local tnt = require 't.tnt'
+local rx = require 'rx'
 
 tnt.cfg{}
 local app = require 'app'
@@ -11,7 +12,7 @@ test:plan(2)
 local success, rep
 success, responce = echo('Hello world!')
 test:is(success, true, 'Test echo API method success')
-test:is(responce, 'Hello world!', 'Test echo API method responce')
+test:is_deeply(responce, {'Hello world!'}, 'Test echo API method responce')
 
 tnt.finish()
 test:check()

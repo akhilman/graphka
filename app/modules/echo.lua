@@ -8,7 +8,7 @@ function modules.echo(config, source)
       to = 'api',
       req_id = msg.req_id,
       success = true,
-      result = msg.data,
+      result = msg.args,
     }
   end
 

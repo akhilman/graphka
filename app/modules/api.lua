@@ -12,9 +12,10 @@ function modules.api(config, source)
 
   local sink = rx.Subject.create()
 
-  local function make_request(module, subject, data)
+  local function make_request(module, subject, ...)
     local req_id
     local req
+    local args = {...}
     last_id = last_id + 1
     req_id = tostring(last_id)
     req = {
@@ -27,7 +28,7 @@ function modules.api(config, source)
       to = module,
       subject = subject,
       req_id = req_id,
-      data = data,
+      args = args,
     })
     if not req.responce then
       req.cond:wait()
