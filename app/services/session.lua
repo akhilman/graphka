@@ -1,77 +1,77 @@
+local Record = require 'record'
 local clock = require 'clock'
 local db = require 'db'
-local fiber = require 'fiber'
 local fun = require 'fun'
 local log = require 'log'
 local reqrep = require 'reqrep'
 local rx = require 'rx'
-local rxtnt = require 'rxtnt'
 local utils = require 'utils'
+
+--- API
+
+local methods = {}
+
+function methods.list_sessions()
+  local sessions
+  sessions = fun.totable(
+    db.iter_sessions():map(Record.to_table)
+  )
+  return sessions
+end
+
+function methods.rename_session(sink, name)
+  db.rename_session(box.session.id(), name)
+  sink:onNext({
+    topic = 'session:renamed',
+    session_id = box.session.id(),
+    name = name,
+  })
+end
+
+--- Service
 
 local services = {}
 
 function services.session(config, source)
 
+  if not db.is_sessions_db_ready() then
+    log.warn('Sessions database not ready.')
+    return
+  end
+
   local sink = rx.Subject.create()
+  local events = db.observe_connections(source)
 
-  local methods = {}
+  local partial_methods = fun.iter(methods)
+    :map(function(k, v) return k, utils.partial(v, sink) end)
+    :tomap()
+  reqrep.dispatch(source, 'session:req', partial_methods):subscribe(sink)
 
-  function methods.list_sessions()
-    local sessions
-    sessions = fun.totable(
-      db.iter_sessions()
-        :map(function(r) return r:to_table() end)
-    )
-    return sessions
+  local success, session = pcall(db.get_current_session)
+  if not success then
+    xpcall(function() db.add_session(
+      Record.create(
+        'sessions', box.session.id(), 'server', '', clock.time()))
+      end, log.error)
   end
 
-  function methods.rename_session(name)
-    db.rename_session(box.session.id(), name)
-    sink:onNext({
-      topic = 'session:renamed',
-      session_id = box.session.id(),
-      name = name,
-    })
-  end
+  events
+    :filter(function(evt, id, peer) return evt == 'connected' end)
+    :subscribe(function(evt, id, peer)
+      db.add_session(
+        Record.create('sessions', id, 'unnamed', peer, clock.time())) end)
 
-  reqrep.dispatch(source, 'session:req', methods):subscribe(sink)
+  events
+    :filter(function(evt, id, peer) return evt == 'disconnected' end)
+    :subscribe(function(evt, id, peer) db.delete_session(id) end)
 
-  if box.space['sessions']
-          and not box.space['sessions']:get(box.session.id()) then
-    box.space['sessions']:insert{
-      box.session.id(), 'server', 'server', clock.time()
-    }
-  end
-
-  local function on_connect()
-    box.space['sessions']:insert{
-      box.session.id(),
-      'unnamed',
-      box.session.peer(),
-      clock.time(),
-    }
-    sink:onNext({
-      topic = 'session:connected',
-      session_id = box.session.id(),
-    })
-  end
-
-  local function on_disconnect()
-    db.delete_session(box.session.id())
-    sink:onNext({
-      topic = 'session:disconnected',
-      session_id = box.session.id(),
-    })
-  end
-
-  local function remove_handlers()
-    box.session.on_connect(nil, on_connect)
-    box.session.on_disconnect(nil, on_disconnect)
-  end
-
-  box.session.on_connect(on_connect)
-  box.session.on_disconnect(on_disconnect)
-  source:subscribe(rx.util.noop, remove_handlers, remove_handlers)
+  events
+    :map(function(evt, id, peer) return {
+      topic = 'session:' .. evt,
+      session_id = id,
+      peer = peer,
+    } end)
+    :subscribe(sink)
 
   return sink
 
