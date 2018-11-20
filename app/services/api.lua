@@ -4,10 +4,10 @@ local utils = require 'utils'
 
 local partial = utils.partial
 
-local modules = {}
+local services = {}
 
 
-function modules.api(config, source)
+function services.api(config, source)
 
   local make_call, sink = reqrep.reqrep(source, 'api:rep')
 
@@ -47,5 +47,5 @@ end
 
 
 return {
-  modules = modules
+  services = services
 }

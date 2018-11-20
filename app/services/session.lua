@@ -7,9 +7,9 @@ local rx = require 'rx'
 local rxtnt = require 'rxtnt'
 local utils = require 'utils'
 
-local modules = {}
+local services = {}
 
-function modules.session(config, source)
+function services.session(config, source)
 
   local sink = rx.Subject.create()
 
@@ -89,5 +89,5 @@ end
 
 
 return {
-  modules = modules
+  services = services
 }

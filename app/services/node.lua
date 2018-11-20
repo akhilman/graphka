@@ -3,9 +3,9 @@ reqrep = require 'reqrep'
 utils = require 'utils'
 rx = require 'rx'
 
-local modules = {}
+local services = {}
 
-function modules.node(config, source)
+function services.node(config, source)
 
   local sink = rx.Subject.create()
 
@@ -201,5 +201,5 @@ function modules.node(config, source)
 end
 
 return {
-  modules = modules
+  services = services
 }

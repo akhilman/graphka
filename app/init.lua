@@ -5,11 +5,11 @@ local rx = require 'rx'
 local utils = require 'utils'
 
 
-local modules = utils.merge_tables(
-    require 'modules.echo' .modules,
-    require 'modules.session' .modules,
-    require 'modules.node' .modules,
-    require 'modules.api' .modules
+local services = utils.merge_tables(
+    require 'services.echo' .services,
+    require 'services.session' .services,
+    require 'services.node' .services,
+    require 'services.api' .services
 )
 
 local default_config = {
@@ -36,22 +36,22 @@ function app.init(config)
 
   local hub = app.hub
   local source = hub
-  local on_module_error
-  local init_module
-  function init_module(name, mod)
-    log.info('module "' .. name .. '" init')
-    local sink = mod(app.config, source)
+  local on_service_error
+  local init_service
+  function init_service(name, serv)
+    log.info('service "' .. name .. '" init')
+    local sink = serv(app.config, source)
     if sink then
-      sink:catch(utils.partial(on_module_error, name, mod)):subscribe(hub)
+      sink:catch(utils.partial(on_service_error, name, serv)):subscribe(hub)
     end
   end
-  function on_module_error(name, mod, err)
-    log.error('Error in module "' .. name .. '": ' .. err)
+  function on_service_error(name, serv, err)
+    log.error('Error in service "' .. name .. '": ' .. err)
     fiber.sleep(1)
-    return init_module(name, mod)
+    return init_service(name, serv)
   end
-  for name, mod in pairs(modules) do
-    init_module(name, mod)
+  for name, serv in pairs(services) do
+    init_service(name, serv)
   end
 
   --- debug

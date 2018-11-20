@@ -1,6 +1,6 @@
 reqrep = require 'reqrep'
 
-local modules = {}
+local services = {}
 local methods = {}
 
 function methods.echo(...)
@@ -11,10 +11,10 @@ function methods.error(err)
   error {err}
 end
 
-function modules.echo(config, source)
+function services.echo(config, source)
   return reqrep.dispatch(source, 'echo', methods)
 end
 
 return {
-  modules = modules
+  services = services
 }
