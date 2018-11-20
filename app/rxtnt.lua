@@ -2,7 +2,7 @@ fun = require('fun')
 fiber = require 'fiber'
 rx = require 'rx'
 
---- @class FiberSchedular
+--- @class FiberScheduler
 -- @description A scheduler that uses tarantool's fiber to schedule events.
 local FiberScheduler = {}
 FiberScheduler.__index = FiberScheduler
