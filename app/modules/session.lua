@@ -15,10 +15,19 @@ function modules.session(config, source)
 
   local methods = {}
 
+  local function format_session(row)
+    return {
+      -- id = row[F.sessions.id],
+      name = row[F.sessions.name],
+      peer = row[F.sessions.peer],
+      atime = row[F.sessions.atime],
+    }
+  end
+
   function methods.list_sessions()
     local sessions
     sessions = fun.totable(
-      fun.iter(box.space['sessions']:pairs())
+      fun.iter(box.space['sessions']:pairs()):map(format_session)
     )
     return sessions
   end
@@ -37,7 +46,8 @@ function modules.session(config, source)
 
   reqrep.dispatch(source, 'session:req', methods):subscribe(sink)
 
-  if not box.space['sessions']:get(box.session.id()) then
+  if box.space['sessions']
+          and not box.space['sessions']:get(box.session.id()) then
     box.space['sessions']:insert{
       box.session.id(), 'server', 'server', clock.time()
     }

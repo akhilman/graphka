@@ -8,6 +8,7 @@ local utils = require 'utils'
 local modules = utils.merge_tables(
     require 'modules.echo' .modules,
     require 'modules.session' .modules,
+    require 'modules.node' .modules,
     require 'modules.api' .modules
 )
 

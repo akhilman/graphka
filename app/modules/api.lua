@@ -2,6 +2,8 @@ local reqrep = require 'reqrep'
 local rx = require 'rx'
 local utils = require 'utils'
 
+local partial = utils.partial
+
 local modules = {}
 
 
@@ -14,11 +16,17 @@ function modules.api(config, source)
   local api = {}
 
   -- echo
-  api.echo = utils.partial(make_call, 'echo', 'echo')
+  api.echo = partial(make_call, 'echo', 'echo')
   -- sessions
-  api.list_sessions = utils.partial(make_call, 'session:req', 'list_sessions')
-  api.rename_session = utils.partial(make_call,
-                                     'session:req', 'rename_session')
+  api.list_sessions = partial(make_call, 'session:req', 'list_sessions')
+  api.rename_session = partial(make_call, 'session:req', 'rename_session')
+  -- nodes
+  api.add_node = partial(make_call, 'node:req', 'add_node')
+  api.enable_node = partial(make_call, 'node:req', 'enable_node')
+  api.disable_node = partial(make_call, 'node:req', 'disable_node')
+  api.remove_node = partial(make_call, 'node:req', 'remove_node')
+  api.list_nodes = partial(make_call, 'node:req', 'list_nodes')
+  api.connect_nodes = partial(make_call, 'node:req', 'connect_nodes')
   -- reload
   api.reload = function() return pcall(package.reload) end
 
