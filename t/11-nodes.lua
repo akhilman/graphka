@@ -26,7 +26,7 @@ success, rep = graphka.list_nodes()
 test:is(#rep, 10, 'Test add node responce')
 
 graphka.remove_node('node6')
-fiber.sleep(0.2)
+fiber.sleep(0.5)
 
 success, rep = graphka.list_nodes()
 test:is_deeply(rep, {}, 'Test remove by required responce')

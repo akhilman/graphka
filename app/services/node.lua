@@ -129,6 +129,7 @@ function services.node(config, source)
   --- Trigger handlers
 
   local on_node_replace = utils.partial(fiber.create, function(old, new)
+    fiber.sleep(0.02)
     if not new and not old then
       return
     end
@@ -170,6 +171,7 @@ function services.node(config, source)
   end)
 
   local on_link_replace = utils.partial(fiber.create, function(old, new)
+    fiber.sleep(0.02)
     if not old then
       sink:onNext({
         topic = 'node:connected',
