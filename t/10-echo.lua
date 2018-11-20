@@ -7,11 +7,16 @@ local app = require 'app'
 app.init{}
 
 local test = tap.test("Echo module")
-test:plan(2)
+test:plan(4)
 
 local success, rep
+
 success, responce = graphka.echo('Hello world!')
 test:is(success, true, 'Test echo API method success')
+test:is_deeply(responce, {'Hello world!'}, 'Test echo API method responce')
+
+success, responce = graphka.error('Hello world!')
+test:is(success, false, 'Test error API method success')
 test:is_deeply(responce, {'Hello world!'}, 'Test echo API method responce')
 
 tnt.finish()

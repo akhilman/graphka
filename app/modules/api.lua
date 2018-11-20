@@ -17,6 +17,7 @@ function modules.api(config, source)
 
   -- echo
   api.echo = partial(make_call, 'echo', 'echo')
+  api.error = partial(make_call, 'echo', 'error')
   -- sessions
   api.list_sessions = partial(make_call, 'session:req', 'list_sessions')
   api.rename_session = partial(make_call, 'session:req', 'rename_session')

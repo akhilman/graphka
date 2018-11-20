@@ -18,7 +18,7 @@ local default_config = {
 
 
 local app = {
-  hub = rx.Subject.create(),
+  hub = rx.BehaviorSubject.create(),
   config = {},
 }
 
@@ -35,14 +35,23 @@ function app.init(config)
   end
 
   local hub = app.hub
-  local sink
   local source = hub
-  for name, mod in pairs(modules) do
+  local on_module_error
+  local init_module
+  function init_module(name, mod)
     log.info('module "' .. name .. '" init')
-    sink = mod(app.config, source)
+    local sink = mod(app.config, source)
     if sink then
-      sink:subscribe(hub)
+      sink:catch(utils.partial(on_module_error, name, mod)):subscribe(hub)
     end
+  end
+  function on_module_error(name, mod, err)
+    log.error('Error in module "' .. name .. '": ' .. err)
+    fiber.sleep(1)
+    return init_module(name, mod)
+  end
+  for name, mod in pairs(modules) do
+    init_module(name, mod)
   end
 
   --- debug
