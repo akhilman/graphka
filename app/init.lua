@@ -3,19 +3,11 @@ local conf = require 'config'
 local log = require 'log'
 local rx = require 'rx'
 local utils = require 'utils'
-
-
-local services = utils.merge_tables(
-    require 'services.echo' .services,
-    require 'services.session' .services,
-    require 'services.node' .services,
-    require 'services.api' .services
-)
+local services = require 'services'
 
 local default_config = {
   migrations = './migrations',
 }
-
 
 local app = {
   hub = rx.BehaviorSubject.create(),
@@ -50,7 +42,7 @@ function app.init(config)
     fiber.sleep(1)
     return init_service(name, serv)
   end
-  for name, serv in pairs(services) do
+  for name, serv in pairs(services.services) do
     init_service(name, serv)
   end
 
