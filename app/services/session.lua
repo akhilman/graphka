@@ -61,7 +61,7 @@ function services.session(config, source)
       clock.time(),
     }
     sink:onNext({
-      topic = 'session:on_connect',
+      topic = 'session:connected',
       session_id = box.session.id(),
     })
   end
@@ -69,7 +69,7 @@ function services.session(config, source)
   local function on_disconnect()
     box.space['sessions']:delete(box.session.id())
     sink:onNext({
-      topic = 'session:on_disconnect',
+      topic = 'session:disconnected',
       session_id = box.session.id(),
     })
   end

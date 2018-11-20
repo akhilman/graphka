@@ -117,7 +117,7 @@ function services.node(config, source)
   reqrep.dispatch(source, 'node:req', methods):subscribe(sink)
 
   source
-    :filter(function(msg) return msg.topic == 'session:on_disconnect' end)
+    :filter(function(msg) return msg.topic == 'session:disconnected' end)
     :map(function(msg)
       return box.space['nodes'].index['tmp_session_id']:select(msg.session_id)
     end)
