@@ -1,4 +1,5 @@
 local clock = require 'clock'
+local db = require 'db'
 local fiber = require 'fiber'
 local fun = require 'fun'
 local log = require 'log'
@@ -15,28 +16,17 @@ function services.session(config, source)
 
   local methods = {}
 
-  local function format_session(row)
-    return {
-      -- id = row[F.sessions.id],
-      name = row[F.sessions.name],
-      peer = row[F.sessions.peer],
-      atime = row[F.sessions.atime],
-    }
-  end
-
   function methods.list_sessions()
     local sessions
     sessions = fun.totable(
-      fun.iter(box.space['sessions']:pairs()):map(format_session)
+      db.iter_sessions()
+        :map(function(r) return r:to_table() end)
     )
     return sessions
   end
 
   function methods.rename_session(name)
-    name = name or 'unnamed'
-    box.space['sessions']:update(box.session.id(), {
-      {'=', F.sessions.name, name}
-    })
+    db.rename_session(box.session.id(), name)
     sink:onNext({
       topic = 'session:renamed',
       session_id = box.session.id(),
@@ -67,7 +57,7 @@ function services.session(config, source)
   end
 
   local function on_disconnect()
-    box.space['sessions']:delete(box.session.id())
+    db.delete_session(box.session.id())
     sink:onNext({
       topic = 'session:disconnected',
       session_id = box.session.id(),
