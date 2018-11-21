@@ -21,7 +21,7 @@ end
 function session.rename(id, name)
   assert(type(id) == 'number', 'id must be integer')
   assert(type(name) == 'string', 'name must be string')
-  local row = box.space.session:update(box.session.id(), {
+  local row = box.space.session:update(id, {
     {'=', F.session.name, name}
   })
   assert(row, "No such session")
