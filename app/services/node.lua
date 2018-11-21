@@ -13,17 +13,17 @@ function services.node(config, source)
 
   local function format_node(row)
     local sources = fun.totable(
-      fun.iter(box.space['node_links'].index['sink_id']
+      fun.iter(box.space['wire'].index['sink_id']
                :pairs(row[F.node.id]))
-      :map(function(link) return link[F.node_links.source_id] end)
+      :map(function(link) return link[F.wire.source_id] end)
       :map(function(id) return box.space['node']:get(id) end)
       :filter(fun.operator.truth)
       :map(function(node) return node[F.node.name] end)
     )
     local sinks = fun.totable(
-      fun.iter(box.space['node_links'].index['source_id']
+      fun.iter(box.space['wire'].index['source_id']
                :pairs(row[F.node.id]))
-      :map(function(link) return link[F.node_links.sink_id] end)
+      :map(function(link) return link[F.wire.sink_id] end)
       :map(function(id) return box.space['node']:get(id) end)
       :filter(fun.operator.truth)
       :map(function(node) return node[F.node.name] end)
@@ -107,7 +107,7 @@ function services.node(config, source)
     end
     local sink_id = sink_row[F.node.id]
 
-    box.space['node_links']:insert{
+    box.space['wire']:insert{
       nil, source_id, sink_id,
       params.source_required, params.sink_required
     }
@@ -149,21 +149,21 @@ function services.node(config, source)
       sink:onNext({topic = 'node:removed', node_id = node_id})
       local node_to_remove = fun.totable(fun.chain(
         -- remove node by required sink
-        fun.iter(box.space['node_links'].index['sink_id']:pairs(node_id))
-          :filter(function(link) return link[F.node_links.sink_required] end)
-          :map(function(link) return link[F.node_links.source_id] end),
+        fun.iter(box.space['wire'].index['sink_id']:pairs(node_id))
+          :filter(function(link) return link[F.wire.sink_required] end)
+          :map(function(link) return link[F.wire.source_id] end),
         -- remove node by required source
-        fun.iter(box.space['node_links'].index['source_id']:pairs(node_id))
-          :filter(function(link) return link[F.node_links.source_required] end)
-          :map(function(link) return link[F.node_links.sink_id] end)
+        fun.iter(box.space['wire'].index['source_id']:pairs(node_id))
+          :filter(function(link) return link[F.wire.source_required] end)
+          :map(function(link) return link[F.wire.sink_id] end)
       ):filter(util.partial(fun.operator.ne, node_id)))
       -- remove dead links
-      fun.iter(box.space['node_links'].index['sink_id']:pairs(node_id))
-        :map(function(link) return link[F.node_links.id] end)
-        :each(function(id) box.space['node_links']:delete(id) end)
-      fun.iter(box.space['node_links'].index['source_id']:pairs(node_id))
-        :map(function(link) return link[F.node_links.id] end)
-        :each(function(id) box.space['node_links']:delete(id) end)
+      fun.iter(box.space['wire'].index['sink_id']:pairs(node_id))
+        :map(function(link) return link[F.wire.id] end)
+        :each(function(id) box.space['wire']:delete(id) end)
+      fun.iter(box.space['wire'].index['source_id']:pairs(node_id))
+        :map(function(link) return link[F.wire.id] end)
+        :each(function(id) box.space['wire']:delete(id) end)
       -- remove node
       fun.iter(node_to_remove)
         :each(function(id) box.space['node']:delete(id) end)
@@ -175,26 +175,26 @@ function services.node(config, source)
     if not old then
       sink:onNext({
         topic = 'node:connected',
-        node_id = new[F.node_links.sink_id],
-        source_id = new[F.node_links.source_id]
+        node_id = new[F.wire.sink_id],
+        source_id = new[F.wire.source_id]
       })
     elseif not new then
       sink:onNext({
         topic = 'node:disconnected',
-        node_id = old[F.node_links.sink_id],
-        source_id = old[F.node_links.source_id]
+        node_id = old[F.wire.sink_id],
+        source_id = old[F.wire.source_id]
       })
     end
   end)
 
   local function remove_handlers()
     box.space['node']:on_replace(nil, on_node_replace)
-    box.space['node_links']:on_replace(nil, on_link_replace)
+    box.space['wire']:on_replace(nil, on_link_replace)
   end
 
-  if box.space['node'] and box.space['node_links'] then
+  if box.space['node'] and box.space['wire'] then
     box.space['node']:on_replace(on_node_replace)
-    box.space['node_links']:on_replace(on_link_replace)
+    box.space['wire']:on_replace(on_link_replace)
     source:subscribe(rx.util.noop, remove_handlers, remove_handlers)
   end
 

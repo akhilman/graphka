@@ -24,7 +24,7 @@ spacer:space({
 })
 
 spacer:space({
-  name = 'node_links',
+  name = 'wire',
   format = {
     { name = 'id', type = 'unsigned' },
     { name = 'source_id', type = 'unsigned' },
