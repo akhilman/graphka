@@ -65,7 +65,7 @@ function Record.from_table(schema, table)
   return record
 end
 
-function Record:to_table()
+function Record:to_map()
   assert(type(self._schema) == 'string', 'schema attribute is not defined')
   local table = {}
   for n, field in ipairs(self._fields) do

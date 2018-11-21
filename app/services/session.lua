@@ -15,7 +15,7 @@ local methods = {}
 function methods.list_sessions()
   local session
   session = fun.totable(
-    db.session.iter():map(Record.to_table)
+    db.session.iter():map(Record.to_map)
   )
   return session
 end
