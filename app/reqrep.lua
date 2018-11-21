@@ -1,6 +1,6 @@
 local fiber = require 'fiber'
 local rx = require 'rx'
-local utils = require 'utils'
+local util = require 'util'
 
 local M = {}
 
@@ -103,7 +103,7 @@ function M.dispatch(source, topic, func_map)
     return msg.topic == topic
   end)
   sink = filtered
-    :map(utils.partial(resolve, func_map))
+    :map(util.partial(resolve, func_map))
     :zip(filtered)
     :map(call)
 

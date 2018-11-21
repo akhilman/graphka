@@ -1,4 +1,4 @@
-local utils = require 'utils'
+local util = require 'util'
 
 local S = {}
 local M = {}

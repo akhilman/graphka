@@ -1,8 +1,8 @@
 local reqrep = require 'reqrep'
 local rx = require 'rx'
-local utils = require 'utils'
+local util = require 'util'
 
-local partial = utils.partial
+local partial = util.partial
 
 local services = {}
 

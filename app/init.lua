@@ -2,7 +2,7 @@ local fiber = require 'fiber'
 local conf = require 'config'
 local log = require 'log'
 local rx = require 'rx'
-local utils = require 'utils'
+local util = require 'util'
 local services = require 'services'
 
 local default_config = {
@@ -17,7 +17,7 @@ local app = {
 function app.init(config)
   log.info('app "graphka" init')
 
-  app.config = utils.merge_tables(default_config, config)
+  app.config = util.merge_tables(default_config, config)
   box.spacer = require 'spacer'({
       migrations = app.config.migrations,
   })
@@ -34,7 +34,7 @@ function app.init(config)
     log.info('service "' .. name .. '" init')
     local sink = serv(app.config, source)
     if sink then
-      sink:catch(utils.partial(on_service_error, name, serv)):subscribe(hub)
+      sink:catch(util.partial(on_service_error, name, serv)):subscribe(hub)
     end
   end
   function on_service_error(name, serv, err)

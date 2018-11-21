@@ -2,7 +2,7 @@ local Record = require 'record'
 local fun = require 'fun'
 local rx = require 'rx'
 local rxtnt = require 'rxtnt'
-local utils = require 'utils'
+local util = require 'util'
 
 local M = {}
 local session = {}
@@ -44,7 +44,7 @@ end
 
 function session.iter()
   return fun.iter(box.space.sessions:pairs())
-    :map(utils.partial(Record.from_tuple, 'sessions'))
+    :map(util.partial(Record.from_tuple, 'sessions'))
 end
 
 function session.observe_connections(source)

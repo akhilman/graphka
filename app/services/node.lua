@@ -1,6 +1,6 @@
 fiber = require 'fiber'
 reqrep = require 'reqrep'
-utils = require 'utils'
+util = require 'util'
 rx = require 'rx'
 
 local services = {}
@@ -42,7 +42,7 @@ function services.node(config, source)
   end
 
   function methods.add_node(name, params)
-    params = utils.merge_tables(
+    params = util.merge_tables(
       {
         enabled = false,
         nice = 0,
@@ -87,7 +87,7 @@ function services.node(config, source)
 
   function methods.connect_nodes(source, sink, params)
 
-    params = utils.merge_tables(
+    params = util.merge_tables(
       {
         source_required = false,
         sink_required = false,
@@ -128,7 +128,7 @@ function services.node(config, source)
 
   --- Trigger handlers
 
-  local on_node_replace = utils.partial(fiber.create, function(old, new)
+  local on_node_replace = util.partial(fiber.create, function(old, new)
     fiber.sleep(0.02)
     if not new and not old then
       return
@@ -156,7 +156,7 @@ function services.node(config, source)
         fun.iter(box.space['node_links'].index['source_id']:pairs(node_id))
           :filter(function(link) return link[F.node_links.source_required] end)
           :map(function(link) return link[F.node_links.sink_id] end)
-      ):filter(utils.partial(fun.operator.ne, node_id)))
+      ):filter(util.partial(fun.operator.ne, node_id)))
       -- remove dead links
       fun.iter(box.space['node_links'].index['sink_id']:pairs(node_id))
         :map(function(link) return link[F.node_links.id] end)
@@ -170,7 +170,7 @@ function services.node(config, source)
     end
   end)
 
-  local on_link_replace = utils.partial(fiber.create, function(old, new)
+  local on_link_replace = util.partial(fiber.create, function(old, new)
     fiber.sleep(0.02)
     if not old then
       sink:onNext({

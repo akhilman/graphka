@@ -5,7 +5,7 @@ local fun = require 'fun'
 local log = require 'log'
 local reqrep = require 'reqrep'
 local rx = require 'rx'
-local utils = require 'utils'
+local util = require 'util'
 
 --- API
 
@@ -43,7 +43,7 @@ function services.session(config, source)
   local events = db.session.observe_connections(source)
 
   local partial_methods = fun.iter(methods)
-    :map(function(k, v) return k, utils.partial(v, sink) end)
+    :map(function(k, v) return k, util.partial(v, sink) end)
     :tomap()
   reqrep.dispatch(source, 'session:req', partial_methods):subscribe(sink)
 
