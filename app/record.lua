@@ -36,7 +36,7 @@ function Record:__tostring()
 end
 
 function Record.create(schema, ...)
-  assert(type(schema) == 'string')
+  assert(type(schema) == 'string', 'schema must be a string')
   local fields = fun.iter(F[schema]):map(function(k, v) return k end):totable()
   table.sort(fields, function(a, b) return F[schema][a] < F[schema][b] end)
   local args = {...}
@@ -58,7 +58,6 @@ function Record.from_tuple(schema, tuple)
 end
 
 function Record.from_table(schema, table)
-  assert(type(schema) == 'string')
   local record = Record.create(schema)
   for n, field in ipairs(record._fields) do
     record[n] = table[field]
@@ -67,7 +66,7 @@ function Record.from_table(schema, table)
 end
 
 function Record:to_table()
-  assert(type(self._schema) == 'string')
+  assert(type(self._schema) == 'string', 'schema attribute is not defined')
   local table = {}
   for n, field in ipairs(self._fields) do
     table[field] = self[n]
@@ -76,7 +75,7 @@ function Record:to_table()
 end
 
 function Record:to_tuple()
-  assert(type(self._schema) == 'string')
+  assert(type(self._schema) == 'string', 'schema attribute is not defined')
   local tuple = {}
   local len = 0
   for n, field in ipairs(self._fields) do
