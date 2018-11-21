@@ -64,7 +64,7 @@ function services.session(config, source, scheduler)
 
   conn_events
     :filter(function(evt, id, peer) return evt == 'disconnected' end)
-    :subscribe(function(evt, id, peer) db.session.delete(id) end)
+    :subscribe(function(evt, id, peer) db.session.remove(id) end)
 
   db.session.observe(source):delay(0.01, scheduler):subscribe(sink)
 

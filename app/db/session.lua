@@ -26,7 +26,7 @@ function session.rename(id, name)
   assert(row, "No such session")
 end
 
-function session.delete(id)
+function session.remove(id)
   assert(type(id) == 'number', 'id must be integer')
   row = box.space.session:delete(id)
   assert(row, "No such session")
