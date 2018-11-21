@@ -9,32 +9,32 @@ local session = {}
 M.session = session
 
 function session.is_ready()
-  return fun.operator.truth(box.space.sessions)
+  return fun.operator.truth(box.space.session)
 end
 
 function session.add(session)
-  assert(session._schema == 'sessions')
-  box.space.sessions:insert(session:to_tuple())
+  assert(session._schema == 'session')
+  box.space.session:insert(session:to_tuple())
 end
 
 function session.rename(id, name)
   name = name or 'unnamed'
-  local row = box.space.sessions:update(box.session.id(), {
-    {'=', F.sessions.name, name}
+  local row = box.space.session:update(box.session.id(), {
+    {'=', F.session.name, name}
   })
   assert(row, "No such session")
 end
 
 function session.delete(id)
-  row = box.space.sessions:delete(id)
+  row = box.space.session:delete(id)
   assert(row, "No such session")
 end
 
 function session.get(id)
   assert(type(id) == 'number')
-  local row = box.space.sessions:get(id)
+  local row = box.space.session:get(id)
   assert(row, "No such session")
-  local session Record.from_tuple('sessions', row)
+  local session Record.from_tuple('session', row)
   return session
 end
 
@@ -43,8 +43,8 @@ function session.get_current()
 end
 
 function session.iter()
-  return fun.iter(box.space.sessions:pairs())
-    :map(util.partial(Record.from_tuple, 'sessions'))
+  return fun.iter(box.space.session:pairs())
+    :map(util.partial(Record.from_tuple, 'session'))
 end
 
 function session.observe_connections(source)

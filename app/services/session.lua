@@ -12,11 +12,11 @@ local util = require 'util'
 local methods = {}
 
 function methods.list_sessions()
-  local sessions
-  sessions = fun.totable(
+  local session
+  session = fun.totable(
     db.session.iter():map(Record.to_table)
   )
-  return sessions
+  return session
 end
 
 function methods.rename_session(sink, name)
@@ -51,7 +51,7 @@ function services.session(config, source)
   if not success then
     xpcall(function() db.session.add(
       Record.create(
-        'sessions', box.session.id(), 'server', '', clock.time()))
+        'session', box.session.id(), 'server', '', clock.time()))
       end, log.error)
   end
 
@@ -59,7 +59,7 @@ function services.session(config, source)
     :filter(function(evt, id, peer) return evt == 'connected' end)
     :subscribe(function(evt, id, peer)
       db.session.add(
-        Record.create('sessions', id, 'unnamed', peer, clock.time())) end)
+        Record.create('session', id, 'unnamed', peer, clock.time())) end)
 
   events
     :filter(function(evt, id, peer) return evt == 'disconnected' end)

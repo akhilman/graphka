@@ -1,7 +1,7 @@
 local spacer = require 'spacer'
 
 spacer:space({
-  name = 'sessions',
+  name = 'session',
   format = {
     { name = 'id', type = 'unsigned' },
     { name = 'name', type = 'string', is_nullable = true },
