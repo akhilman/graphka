@@ -57,7 +57,7 @@ function Record.from_tuple(schema, tuple)
   return record
 end
 
-function Record.from_table(schema, table)
+function Record.from_map(schema, table)
   local record = Record.create(schema)
   for n, field in ipairs(record._fields) do
     record[n] = table[field]
