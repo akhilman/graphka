@@ -20,13 +20,8 @@ function methods.list_sessions()
   return session
 end
 
-function methods.rename_session(sink, name)
+function methods.rename_session(name)
   db.session.rename(box.session.id(), name)
-  sink:onNext({
-    topic = 'session:renamed',
-    session_id = box.session.id(),
-    name = name,
-  })
 end
 
 --- Service
@@ -43,10 +38,7 @@ function services.session(config, source, scheduler)
   local sink = rx.Subject.create()
   local conn_events = db.session.observe_connections(source)
 
-  local partial_methods = fun.iter(methods)
-    :map(function(k, v) return k, util.partial(v, sink) end)
-    :tomap()
-  reqrep.dispatch(source, 'session:req', partial_methods):subscribe(sink)
+  reqrep.dispatch(source, 'session:req', methods):subscribe(sink)
 
   local success, session = pcall(db.session.get_current)
   if not success then
