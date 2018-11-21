@@ -5,14 +5,27 @@ local rx = require 'rx'
 
 local Record = {}
 
+local cached_fields = {}
+local function get_fields(schema)
+  local fields = cached_fields[schema]
+  if fields then
+    return fields
+  end
+  assert(F[schema], string.format('No such schema "%s"', schema))
+  local fields = fun.iter(F[schema]):map(function(k, v) return k end):totable()
+  table.sort(fields, function(a, b) return F[schema][a] < F[schema][b] end)
+  cached_fields[schema] = fields
+  return fields
+end
+
 function Record:__index(key)
-  local mt = getmetatable(self)
-  local ix = type(key) == 'number' and key <= #self._fields and key
-             or fun.index(key, self._fields)
-  if ix then
+  local fields = get_fields(self._schema)
+  key = type(key) == 'number' and fields[key] or key
+
+  if key == '_schema' or fun.index(key, fields) then
     return rawget(self, ix)
   else
-    local v = mt[key]
+    local v = getmetatable(self)[key]
     if v then
       return v
     end
@@ -21,14 +34,14 @@ function Record:__index(key)
 end
 
 function Record:__newindex(key, value)
-  local ix = type(key) == 'number' and key <= #self._fields and key
-             or fun.index(key, self._fields)
-  assert(ix, string.format('No such field "%s"', key))
-  return rawset(self, ix, value)
+  local fields = get_fields(self._schema)
+  key = type(key) == 'number' and fields[key] or key
+  assert(fun.index(key, fields), string.format('No such field "%s"', key))
+  return rawset(self, key, value)
 end
 
 function Record:__len()
-  return #self._fields
+  return #get_fields(self._schema)
 end
 
 function Record:__tostring()
@@ -36,59 +49,64 @@ function Record:__tostring()
 end
 
 function Record.create(schema, ...)
-  assert(type(schema) == 'string', 'schema must be a string')
-  local fields = fun.iter(F[schema]):map(function(k, v) return k end):totable()
-  table.sort(fields, function(a, b) return F[schema][a] < F[schema][b] end)
   local record = {}
   record._schema = schema
-  record._fields = fields
-  for n=1, math.min(#fields, select('#', ...)), 1 do
-    record[n] = select(n, ...)
+  if select('#', ...) > 0 then
+    local fields = get_fields(schema)
+    for n=1, math.min(#fields, select('#', ...)), 1 do
+      record[fields[n]] = select(n, ...)
+    end
   end
   return setmetatable(record, Record)
 end
 
-function Record.from_tuple(schema, tuple)
+function Record.from_map(schema, table)
+  local fields = get_fields(schema)
   local record = Record.create(schema)
-  for n, field in ipairs(record._fields) do
-    record[n] = tuple[n]
+  for n, field in ipairs(fields) do
+    record[field] = table[field]
   end
   return record
 end
 
-function Record.from_map(schema, table)
+function Record.from_tuple(schema, tuple)
+  local fields = get_fields(schema)
   local record = Record.create(schema)
-  for n, field in ipairs(record._fields) do
-    record[n] = table[field]
+  for n, field in ipairs(fields) do
+    record[field] = tuple[n]
   end
   return record
 end
 
 function Record:copy()
-  return Record.from_tuple(self._schema, self:to_tuple())
+  return Record.from_map(self._schema, self:to_map())
 end
 
 function Record:to_map()
-  assert(type(self._schema) == 'string', 'schema attribute is not defined')
+  local fields = get_fields(self._schema)
   local table = {}
-  for n, field in ipairs(self._fields) do
-    table[field] = self[n]
+  for n, field in ipairs(fields) do
+    table[field] = self[field]
   end
   return table
 end
 
 function Record:to_tuple()
-  assert(type(self._schema) == 'string', 'schema attribute is not defined')
+  local fields = get_fields(self._schema)
   local tuple = {}
   local len = 0
-  for n, field in ipairs(self._fields) do
-    tuple[n] = self[n]
+  for n, field in ipairs(fields) do
+    tuple[n] = self[field]
   end
   return tuple
 end
 
 function Record:unpack()
   return rx.util.unpack(self:to_tuple())
+end
+
+function Record:get_fields()
+  return get_fields(self._schema)
 end
 
 return Record
