@@ -14,28 +14,28 @@ function services.node(config, source)
   local function format_node(row)
     local sources = fun.totable(
       fun.iter(box.space['node_links'].index['sink_id']
-               :pairs(row[F.nodes.id]))
+               :pairs(row[F.node.id]))
       :map(function(link) return link[F.node_links.source_id] end)
-      :map(function(id) return box.space['nodes']:get(id) end)
+      :map(function(id) return box.space['node']:get(id) end)
       :filter(fun.operator.truth)
-      :map(function(node) return node[F.nodes.name] end)
+      :map(function(node) return node[F.node.name] end)
     )
     local sinks = fun.totable(
       fun.iter(box.space['node_links'].index['source_id']
-               :pairs(row[F.nodes.id]))
+               :pairs(row[F.node.id]))
       :map(function(link) return link[F.node_links.sink_id] end)
-      :map(function(id) return box.space['nodes']:get(id) end)
+      :map(function(id) return box.space['node']:get(id) end)
       :filter(fun.operator.truth)
-      :map(function(node) return node[F.nodes.name] end)
+      :map(function(node) return node[F.node.name] end)
     )
     return {
-      -- id = row[F.nodes.id],
-      name = row[F.nodes.name],
-      enabled = row[F.nodes.enabled],
-      nice = row[F.nodes.nice],
-      start_offset = row[F.nodes.start_offset],
-      history_size = row[F.nodes.history_size],
-      temporary = row[F.nodes.tmp_session_id] and true or false,
+      -- id = row[F.node.id],
+      name = row[F.node.name],
+      enabled = row[F.node.enabled],
+      nice = row[F.node.nice],
+      start_offset = row[F.node.start_offset],
+      history_size = row[F.node.history_size],
+      temporary = row[F.node.tmp_session_id] and true or false,
       sources = sources,
       sinks = sinks,
     }
@@ -52,7 +52,7 @@ function services.node(config, source)
       },
       params or {}
     )
-    local row = box.space['nodes']:insert{
+    local row = box.space['node']:insert{
       nil, name,
       params.enabled, params.nice, params.start_offset, params.history_size,
       params.temporary and box.session.id() or nil
@@ -61,19 +61,19 @@ function services.node(config, source)
   end
 
   function methods.enable_node(name)
-    local row = box.space['nodes'].index.name:update(
-      name, {{'=', F.nodes.enabled, true}}
+    local row = box.space['node'].index.name:update(
+      name, {{'=', F.node.enabled, true}}
     )
   end
 
   function methods.disable_node(name)
-    local row = box.space['nodes'].index.name:update(
-      name, {{'=', F.nodes.enabled, false}}
+    local row = box.space['node'].index.name:update(
+      name, {{'=', F.node.enabled, false}}
     )
   end
 
   function methods.remove_node(name)
-    local row = box.space['nodes'].index.name:delete(name)
+    local row = box.space['node'].index.name:delete(name)
     if not row then
       error('No such node "' .. name .. '"')
     end
@@ -81,7 +81,7 @@ function services.node(config, source)
 
   function methods.list_nodes()
     return fun.totable(
-      fun.iter(box.space['nodes']:pairs()):map(format_node)
+      fun.iter(box.space['node']:pairs()):map(format_node)
     )
   end
 
@@ -95,17 +95,17 @@ function services.node(config, source)
       params or {}
     )
 
-    local source_row = box.space['nodes'].index.name:get(source)
+    local source_row = box.space['node'].index.name:get(source)
     if not source_row then
       error('No such node "' .. source .. '"')
     end
-    local source_id = source_row[F.nodes.id]
+    local source_id = source_row[F.node.id]
 
-    local sink_row = box.space['nodes'].index.name:get(sink)
+    local sink_row = box.space['node'].index.name:get(sink)
     if not sink_row then
       error('No such node "' .. sink .. '"')
     end
-    local sink_id = sink_row[F.nodes.id]
+    local sink_id = sink_row[F.node.id]
 
     box.space['node_links']:insert{
       nil, source_id, sink_id,
@@ -119,12 +119,12 @@ function services.node(config, source)
   source
     :filter(function(msg) return msg.topic == 'session:disconnected' end)
     :map(function(msg)
-      return box.space['nodes'].index['tmp_session_id']:select(msg.session_id)
+      return box.space['node'].index['tmp_session_id']:select(msg.session_id)
     end)
     :map(rx.Observable.fromTable)
     :flatMap()
-    :map(function(row) return row[F.nodes.id] end)
-    :subscribe(function(id) box.space['nodes']:delete(id) end)
+    :map(function(row) return row[F.node.id] end)
+    :subscribe(function(id) box.space['node']:delete(id) end)
 
   --- Trigger handlers
 
@@ -134,12 +134,12 @@ function services.node(config, source)
       return
     end
     local old_enabled = false
-    local enabled = new and new[F.nodes.enabled] or false
-    local node_id = new and new[F.nodes.id] or old[F.nodes.id]
+    local enabled = new and new[F.node.enabled] or false
+    local node_id = new and new[F.node.id] or old[F.node.id]
     if not old then
       sink:onNext({topic = 'node:added', node_id = node_id})
     else
-      old_enabled = old[F.nodes.enabled]
+      old_enabled = old[F.node.enabled]
     end
     if old_enabled ~= enabled then
       sink:onNext({topic = enabled and 'node:enabled' or 'node:disabled',
@@ -147,12 +147,12 @@ function services.node(config, source)
     end
     if not new then
       sink:onNext({topic = 'node:removed', node_id = node_id})
-      local nodes_to_remove = fun.totable(fun.chain(
-        -- remove nodes by required sink
+      local node_to_remove = fun.totable(fun.chain(
+        -- remove node by required sink
         fun.iter(box.space['node_links'].index['sink_id']:pairs(node_id))
           :filter(function(link) return link[F.node_links.sink_required] end)
           :map(function(link) return link[F.node_links.source_id] end),
-        -- remove nodes by required source
+        -- remove node by required source
         fun.iter(box.space['node_links'].index['source_id']:pairs(node_id))
           :filter(function(link) return link[F.node_links.source_required] end)
           :map(function(link) return link[F.node_links.sink_id] end)
@@ -164,9 +164,9 @@ function services.node(config, source)
       fun.iter(box.space['node_links'].index['source_id']:pairs(node_id))
         :map(function(link) return link[F.node_links.id] end)
         :each(function(id) box.space['node_links']:delete(id) end)
-      -- remove nodes
-      fun.iter(nodes_to_remove)
-        :each(function(id) box.space['nodes']:delete(id) end)
+      -- remove node
+      fun.iter(node_to_remove)
+        :each(function(id) box.space['node']:delete(id) end)
     end
   end)
 
@@ -188,12 +188,12 @@ function services.node(config, source)
   end)
 
   local function remove_handlers()
-    box.space['nodes']:on_replace(nil, on_node_replace)
+    box.space['node']:on_replace(nil, on_node_replace)
     box.space['node_links']:on_replace(nil, on_link_replace)
   end
 
-  if box.space['nodes'] and box.space['node_links'] then
-    box.space['nodes']:on_replace(on_node_replace)
+  if box.space['node'] and box.space['node_links'] then
+    box.space['node']:on_replace(on_node_replace)
     box.space['node_links']:on_replace(on_link_replace)
     source:subscribe(rx.util.noop, remove_handlers, remove_handlers)
   end

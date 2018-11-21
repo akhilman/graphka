@@ -21,7 +21,7 @@ function services.api(config, source)
   -- session
   api.list_sessions = partial(make_call, 'session:req', 'list_sessions')
   api.rename_session = partial(make_call, 'session:req', 'rename_session')
-  -- nodes
+  -- node
   api.add_node = partial(make_call, 'node:req', 'add_node')
   api.enable_node = partial(make_call, 'node:req', 'enable_node')
   api.disable_node = partial(make_call, 'node:req', 'disable_node')

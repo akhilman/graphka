@@ -1,7 +1,7 @@
 local spacer = require 'spacer'
 
 spacer:space({
-  name = 'nodes',
+  name = 'node',
   format = {
     { name = 'id', type = 'unsigned' },
     { name = 'name', type = 'string' },
