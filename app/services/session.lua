@@ -17,7 +17,7 @@ function methods.list_sessions()
 end
 
 function methods.rename_session(name)
-  return db.session.rename(box.session.id(), name):to_map()
+  db.session.rename(box.session.id(), name)
 end
 
 --- Service
