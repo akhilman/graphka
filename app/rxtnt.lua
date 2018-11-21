@@ -75,7 +75,7 @@ function ObservableTrigger:subscribe(onNext, onError, onCompleted)
     end
     self.trigger(handler)
     self.handler = handler
-    print('attaching handler')
+    -- print('attaching handler')
   end
 
   local observer
