@@ -50,6 +50,7 @@ function session.iter()
 end
 
 function session.observe_connections(source)
+
   local conn = rxtnt.ObservableTrigger.create(box.session.on_connect)
   local disconn = rxtnt.ObservableTrigger.create(box.session.on_disconnect)
 
@@ -67,6 +68,45 @@ function session.observe_connections(source)
     disconn:map(function()
       return 'disconnected', box.session.id(), box.session.peer() end)
   )
+end
+
+function session.observe(source)
+
+  local db_events = rxtnt.ObservableTrigger.create(function(...)
+    box.space['session']:on_replace(...)
+  end)
+
+  if source then
+    --- stop observable on source's onComplete
+    local function stop()
+      db_events:stop()
+    end
+    source:subscribe(rx.util.noop, stop, stop)
+  end
+
+  local events = db_events:map(function(old, new)
+    old = old and Record.from_tuple('session', old) or nil
+    new = new and Record.from_tuple('session', new) or nil
+    if not old then
+      return {
+        topic = 'session:added',
+        session_id = new.id
+      }
+    elseif not new then
+      return {
+        topic = 'session:removed',
+        session_id = old.id
+      }
+    elseif new.name ~= old.name then
+      return {
+        topic = 'session:renamed',
+        session_id = new.id,
+        new_name = new.name
+      }
+    end
+  end)
+
+  return events
 end
 
 return M

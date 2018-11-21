@@ -5,6 +5,7 @@ local fun = require 'fun'
 local log = require 'log'
 local reqrep = require 'reqrep'
 local rx = require 'rx'
+local rxtnt = require 'rxtnt'
 local util = require 'util'
 
 --- API
@@ -40,7 +41,8 @@ function services.session(config, source)
   end
 
   local sink = rx.Subject.create()
-  local events = db.session.observe_connections(source)
+  local scheduler = rxtnt.FiberScheduler.create()
+  local conn_events = db.session.observe_connections(source)
 
   local partial_methods = fun.iter(methods)
     :map(function(k, v) return k, util.partial(v, sink) end)
@@ -55,23 +57,17 @@ function services.session(config, source)
       end, log.error)
   end
 
-  events
+  conn_events
     :filter(function(evt, id, peer) return evt == 'connected' end)
     :subscribe(function(evt, id, peer)
       db.session.add(
         Record.create('session', id, 'unnamed', peer, clock.time())) end)
 
-  events
+  conn_events
     :filter(function(evt, id, peer) return evt == 'disconnected' end)
     :subscribe(function(evt, id, peer) db.session.delete(id) end)
 
-  events
-    :map(function(evt, id, peer) return {
-      topic = 'session:' .. evt,
-      session_id = id,
-      peer = peer,
-    } end)
-    :subscribe(sink)
+  db.session.observe(source):delay(0.01, scheduler):subscribe(sink)
 
   return sink
 
