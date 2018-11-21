@@ -11,7 +11,7 @@ function methods.error(err)
   error {err}
 end
 
-function services.echo(config, source)
+function services.echo(config, source, scheduler)
   return reqrep.dispatch(source, 'echo', methods)
 end
 

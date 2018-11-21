@@ -5,7 +5,7 @@ rx = require 'rx'
 
 local services = {}
 
-function services.node(config, source)
+function services.node(config, source, scheduler)
 
   local sink = rx.Subject.create()
 

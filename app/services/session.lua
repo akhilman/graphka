@@ -33,7 +33,7 @@ end
 
 local services = {}
 
-function services.session(config, source)
+function services.session(config, source, scheduler)
 
   if not db.session.is_ready() then
     log.warn('Sessions database not ready.')
@@ -41,7 +41,6 @@ function services.session(config, source)
   end
 
   local sink = rx.Subject.create()
-  local scheduler = rxtnt.FiberScheduler.create()
   local conn_events = db.session.observe_connections(source)
 
   local partial_methods = fun.iter(methods)

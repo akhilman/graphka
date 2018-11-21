@@ -7,7 +7,7 @@ local partial = util.partial
 local services = {}
 
 
-function services.api(config, source)
+function services.api(config, source, scheduler)
 
   local make_call, sink = reqrep.reqrep(source, 'api:rep')
 
