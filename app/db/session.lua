@@ -14,7 +14,8 @@ end
 
 function session.add(session)
   assert(session._schema == 'session', 'session must be session record')
-  box.space.session:insert(session:to_tuple())
+  local row = box.space.session:insert(session:to_tuple())
+  return Record.from_tuple('session', row)
 end
 
 function session.rename(id, name)
@@ -24,20 +25,21 @@ function session.rename(id, name)
     {'=', F.session.name, name}
   })
   assert(row, "No such session")
+  return Record.from_tuple('session', row)
 end
 
 function session.remove(id)
   assert(type(id) == 'number', 'id must be integer')
   local row = box.space.session:delete(id)
   assert(row, "No such session")
+  return Record.from_tuple('session', row)
 end
 
 function session.get(id)
   assert(type(id) == 'number', 'id must be integer')
   local row = box.space.session:get(id)
   assert(row, "No such session")
-  local session Record.from_tuple('session', row)
-  return session
+  return Record.from_tuple('session', row)
 end
 
 function session.get_current()
