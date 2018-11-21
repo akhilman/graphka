@@ -5,17 +5,19 @@ local rxtnt = require 'rxtnt'
 local utils = require 'utils'
 
 local M = {}
+local session = {}
+M.session = session
 
-function M.is_sessions_db_ready()
+function session.is_ready()
   return fun.operator.truth(box.space.sessions)
 end
 
-function M.add_session(session)
+function session.add(session)
   assert(session._schema == 'sessions')
   box.space.sessions:insert(session:to_tuple())
 end
 
-function M.rename_session(id, name)
+function session.rename(id, name)
   name = name or 'unnamed'
   local row = box.space.sessions:update(box.session.id(), {
     {'=', F.sessions.name, name}
@@ -23,12 +25,12 @@ function M.rename_session(id, name)
   assert(row, "No such session")
 end
 
-function M.delete_session(id)
+function session.delete(id)
   row = box.space.sessions:delete(id)
   assert(row, "No such session")
 end
 
-function M.get_session(id)
+function session.get(id)
   assert(type(id) == 'number')
   local row = box.space.sessions:get(id)
   assert(row, "No such session")
@@ -36,16 +38,16 @@ function M.get_session(id)
   return session
 end
 
-function M.get_current_session()
-  return M.get_session(box.session.id())
+function session.get_current()
+  return session.get(box.session.id())
 end
 
-function M.iter_sessions()
+function session.iter()
   return fun.iter(box.space.sessions:pairs())
     :map(utils.partial(Record.from_tuple, 'sessions'))
 end
 
-function M.observe_connections(source)
+function session.observe_connections(source)
   local conn = rxtnt.ObservableTrigger.create(box.session.on_connect)
   local disconn = rxtnt.ObservableTrigger.create(box.session.on_disconnect)
 
