@@ -28,7 +28,7 @@ end
 
 function session.remove(id)
   assert(type(id) == 'number', 'id must be integer')
-  row = box.space.session:delete(id)
+  local row = box.space.session:delete(id)
   assert(row, "No such session")
 end
 
