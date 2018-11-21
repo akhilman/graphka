@@ -13,11 +13,7 @@ local util = require 'util'
 local methods = {}
 
 function methods.list_sessions()
-  local session
-  session = fun.totable(
-    db.session.iter():map(Record.to_map)
-  )
-  return session
+  return db.session.iter():map(Record.to_map):totable()
 end
 
 function methods.rename_session(name)
