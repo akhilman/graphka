@@ -98,7 +98,7 @@ function ObservableTrigger:subscribe(onNext, onError, onCompleted)
     if #self.observers == 0 and self.handler then
       self.trigger(nil, self.handler)
       self.handler = nil
-      print('dettaching handler')
+      -- print('dettaching handler')
     end
   end)
 end
@@ -114,7 +114,7 @@ function ObservableTrigger:stop()
     if self.handler then
       self.trigger(nil, self.handler)
       self.handler = nil
-      print('dettaching handler')
+      -- print('dettaching handler')
     end
     self.stopped = true
 end
