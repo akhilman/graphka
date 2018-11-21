@@ -13,12 +13,13 @@ function session.is_ready()
 end
 
 function session.add(session)
-  assert(session._schema == 'session')
+  assert(session._schema == 'session', 'session must be session record')
   box.space.session:insert(session:to_tuple())
 end
 
 function session.rename(id, name)
-  name = name or 'unnamed'
+  assert(type(id) == 'number', 'id must be integer')
+  assert(type(name) == 'string', 'name must be string')
   local row = box.space.session:update(box.session.id(), {
     {'=', F.session.name, name}
   })
@@ -26,12 +27,13 @@ function session.rename(id, name)
 end
 
 function session.delete(id)
+  assert(type(id) == 'number', 'id must be integer')
   row = box.space.session:delete(id)
   assert(row, "No such session")
 end
 
 function session.get(id)
-  assert(type(id) == 'number')
+  assert(type(id) == 'number', 'id must be integer')
   local row = box.space.session:get(id)
   assert(row, "No such session")
   local session Record.from_tuple('session', row)
