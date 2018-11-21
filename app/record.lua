@@ -64,6 +64,10 @@ function Record.from_map(schema, table)
   return record
 end
 
+function Record:copy()
+  return Record.from_tuple(self._schema, self:to_tuple())
+end
+
 function Record:to_map()
   assert(type(self._schema) == 'string', 'schema attribute is not defined')
   local table = {}
