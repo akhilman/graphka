@@ -39,12 +39,11 @@ function Record.create(schema, ...)
   assert(type(schema) == 'string', 'schema must be a string')
   local fields = fun.iter(F[schema]):map(function(k, v) return k end):totable()
   table.sort(fields, function(a, b) return F[schema][a] < F[schema][b] end)
-  local args = {...}
   local record = {}
   record._schema = schema
   record._fields = fields
-  for n=1, math.min(#fields, #args), 1 do
-    record[n] = args[n]
+  for n=1, math.min(#fields, select('#', ...)), 1 do
+    record[n] = select(n, ...)
   end
   return setmetatable(record, Record)
 end
