@@ -23,7 +23,7 @@ function Record:__index(key)
   key = type(key) == 'number' and fields[key] or key
 
   if key == '_schema' or fun.index(key, fields) then
-    return rawget(self, ix)
+    return rawget(self, key)
   else
     local v = getmetatable(self)[key]
     if v then
