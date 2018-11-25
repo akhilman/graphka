@@ -3,116 +3,104 @@ reqrep = require 'reqrep'
 util = require 'util'
 rx = require 'rx'
 
+--- API
+
+local methods = {}
+
+local function format_node(node)
+  assert(session._schema == 'node', 'node must be node record')
+  local ret = node:to_map()
+  ret.inputs = db.node.iter_inputs(node.id)
+    :map(util.itemgetter('name'))
+    :totable()
+  ret.outputs = db.node.iter_outputs(node.id)
+    :map(util.itemgetter('name'))
+    :totable()
+  ret.requires = fun.chain(
+    db.node.iter_inputs(node.id, true),
+    db.node.iter_outputs(node.id, true)
+  ):totable()
+  ret.temporary = fun.operator.truth(ret.tmp_session_id)
+  ret.tmp_session_id = nil
+  return ret
+end
+
+function methods.add_node(name, params)
+  assert(type(name) == 'string', 'name must be string')
+  assert(not params or type(params) == 'table', 'params must be table')
+  params = util.merge_tables(
+    {
+      enabled = false,
+      priority = 0,
+      start_offset = 0,
+      history_size = -1,
+      temporary = false,
+    },
+    params
+  )
+  local node = Record.from_map(params)
+  node.id = nil
+  node.name = name
+  node = db.node.add(node)
+  return format_node(node)
+end
+
+function methods.enable_node(name)
+  assert(type(name) == 'string', 'name must be string')
+  local node = db.node.get_by_name(name)
+  db.node.alter(node.id, {enabled = true})
+end
+
+function methods.disable_node(name)
+  assert(type(name) == 'string', 'name must be string')
+  local node = db.node.get_by_name(name)
+  db.node.alter(node.id, {enabled = false})
+end
+
+function methods.remove_node(name)
+  assert(type(name) == 'string', 'name must be string')
+  local node = db.node.get_by_name(name)
+  local removed = db.node.remove(node.id)
+  return #removed
+end
+
+function methods.list_nodes()
+  return db.node.iter():map(format_node):totable()
+end
+
+function methods.connect_nodes(input, output, params)
+  assert(type(input) == 'string', 'name must be string')
+  assert(type(output) == 'string', 'name must be string')
+  assert(not params or type(params) == 'table', 'params must be table')
+
+  local input_node = db.node.get_by_name(input)
+  local output_node = db.node.get_by_name(output)
+  local input_required = fun.operator.truth(params.input_required)
+  local output_required = fun.operator.truth(params.output_required)
+
+  db.node.connect(
+    input_node.id, output_node.id,
+    input_required, output_required
+  )
+end
+
+function methods.disconnect_nodes(input, output)
+  assert(type(input) == 'string', 'name must be string')
+  assert(type(output) == 'string', 'name must be string')
+
+  local input_node = db.node.get_by_name(input)
+  local output_node = db.node.get_by_name(output)
+
+  db.node.disconnect(input_node.id, output_node.id)
+end
+
+--- Service
+
 local services = {}
 
 function services.node(config, source, scheduler)
 
   local sink = rx.Subject.create()
-
-  local methods = {}
-
-  local function format_node(row)
-    local sources = fun.totable(
-      fun.iter(box.space['wire'].index['sink_id']
-               :pairs(row[F.node.id]))
-      :map(function(link) return link[F.wire.source_id] end)
-      :map(function(id) return box.space['node']:get(id) end)
-      :filter(fun.operator.truth)
-      :map(function(node) return node[F.node.name] end)
-    )
-    local sinks = fun.totable(
-      fun.iter(box.space['wire'].index['source_id']
-               :pairs(row[F.node.id]))
-      :map(function(link) return link[F.wire.sink_id] end)
-      :map(function(id) return box.space['node']:get(id) end)
-      :filter(fun.operator.truth)
-      :map(function(node) return node[F.node.name] end)
-    )
-    return {
-      -- id = row[F.node.id],
-      name = row[F.node.name],
-      enabled = row[F.node.enabled],
-      nice = row[F.node.nice],
-      start_offset = row[F.node.start_offset],
-      history_size = row[F.node.history_size],
-      temporary = row[F.node.tmp_session_id] and true or false,
-      sources = sources,
-      sinks = sinks,
-    }
-  end
-
-  function methods.add_node(name, params)
-    params = util.merge_tables(
-      {
-        enabled = false,
-        nice = 0,
-        start_offset = 0,
-        history_size = -1,
-        temporary = false,
-      },
-      params or {}
-    )
-    local row = box.space['node']:insert{
-      nil, name,
-      params.enabled, params.nice, params.start_offset, params.history_size,
-      params.temporary and box.session.id() or nil
-    }
-    return format_node(row)
-  end
-
-  function methods.enable_node(name)
-    local row = box.space['node'].index.name:update(
-      name, {{'=', F.node.enabled, true}}
-    )
-  end
-
-  function methods.disable_node(name)
-    local row = box.space['node'].index.name:update(
-      name, {{'=', F.node.enabled, false}}
-    )
-  end
-
-  function methods.remove_node(name)
-    local row = box.space['node'].index.name:delete(name)
-    if not row then
-      error('No such node "' .. name .. '"')
-    end
-  end
-
-  function methods.list_nodes()
-    return fun.totable(
-      fun.iter(box.space['node']:pairs()):map(format_node)
-    )
-  end
-
-  function methods.connect_nodes(source, sink, params)
-
-    params = util.merge_tables(
-      {
-        source_required = false,
-        sink_required = false,
-      },
-      params or {}
-    )
-
-    local source_row = box.space['node'].index.name:get(source)
-    if not source_row then
-      error('No such node "' .. source .. '"')
-    end
-    local source_id = source_row[F.node.id]
-
-    local sink_row = box.space['node'].index.name:get(sink)
-    if not sink_row then
-      error('No such node "' .. sink .. '"')
-    end
-    local sink_id = sink_row[F.node.id]
-
-    box.space['wire']:insert{
-      nil, source_id, sink_id,
-      params.source_required, params.sink_required
-    }
-
-  end
 
   reqrep.dispatch(source, 'node:req', methods):subscribe(sink)
 
