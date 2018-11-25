@@ -3,6 +3,14 @@ local fun = require 'fun'
 
 local M = {}
 
+function M.assertup(v, message, level)
+  level = level or 2
+  message = message or 'assertion failed!'
+  if not v then
+    error(message, level + 1)
+  end
+end
+
 function M.merge_tables(...)
 
   local ret = {}
