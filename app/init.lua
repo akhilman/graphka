@@ -22,11 +22,9 @@ function app.init(config)
   app.config = util.merge_tables(default_config, config)
   box.spacer = require 'spacer'({
       migrations = app.config.migrations,
+      automigrate = app.config.automigrate
   })
   require 'schema'
-  if app.config.automigrate then
-    box.spacer:migrate_up()
-  end
 
   local on_service_error
   local init_service

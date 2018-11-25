@@ -25,7 +25,14 @@ ${ROOT}/.rocks/lib64/lua/5.1/?.${SOEXT};\
 ${ROOT}/.rocks/lib64/tarantool/?.${SOEXT};\
 ;"
 
-for t in ${ROOT}/t/*.lua; do
-    echo "Running `basename $t`..."
-    LUA_PATH=${LUA_PATH} LUA_CPATH=${LUA_CPATH} ${TARANTOOL} $t
-done
+if [ $# == 0 ]; then
+  for t in ${ROOT}/t/*.lua; do
+      echo "Running `basename $t`..."
+      LUA_PATH=${LUA_PATH} LUA_CPATH=${LUA_CPATH} ${TARANTOOL} $t
+  done
+else
+  for t in $@; do
+      echo "Running `basename $t`..."
+      LUA_PATH=${LUA_PATH} LUA_CPATH=${LUA_CPATH} ${TARANTOOL} $t
+  done
+fi
