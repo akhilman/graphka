@@ -5,8 +5,6 @@ local fun = require 'fun'
 local log = require 'log'
 local reqrep = require 'reqrep'
 local rx = require 'rx'
-local rxtnt = require 'rxtnt'
-local util = require 'util'
 
 --- API
 
