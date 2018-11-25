@@ -40,6 +40,18 @@ function node.remove(id)
   ):map(remove_one):totable()
 end
 
+function node.remove_tmp(session_id)
+  local removed = {}
+  for _, n in fun.iter(
+      box.space.node.index['tmp_session_id']:select(session_id))
+    :map(util.partial(Record.from_tuple, 'node')) do
+    if not fun.index(n.id, removed) then
+      removed = util.concatenate(removed, node.remove(n.id))
+    end
+  end
+  return removed
+end
+
 function node.alter(id, params)
   assertup(type(id) == 'number', 'id must be integer')
   assertup(type(params) == 'table', 'params must be table')

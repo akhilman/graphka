@@ -8,7 +8,7 @@ local Record = require 'record'
 tnt.cfg{}
 
 local test = tap.test("db.node: Basic")
-test:plan(17)
+test:plan(19)
 
 local success, ret
 local node
@@ -37,7 +37,7 @@ test:is(node.name, 'test_node', 'New node name')
 test:is(node.enabled, false, 'New node enabled')
 test:is(node.priority, 2, 'New node priority')
 test:is(node.history_size, 100, 'New node history_size')
-test:is(node.tmp_session_id, 1, 'New node tmp_session_id')
+test:is(node.tmp_session_id, box.session.id(), 'New node tmp_session_id')
 
 -- List nodes
 
@@ -71,6 +71,20 @@ test:is_deeply(ret[1], node, 'Get node')
 
 ret = db.node.iter():totable()
 test:is(#ret, 0, 'Empty node list')
+
+-- Remove by session id
+
+node = db.node.add(Record.from_map('node', {
+  name = 'test_node',
+  enabled = false,
+  priority = 2,
+  history_size = 100,
+  tmp_session_id = box.session.id()
+}))
+
+ret = db.node.remove_tmp(box.session.id())
+test:is(#ret, 1, 'Removed tmp count')
+test:is_deeply(ret[1], node, 'Removed tmp node')
 
 tnt.finish()
 test:check()
