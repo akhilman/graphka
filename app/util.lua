@@ -40,4 +40,10 @@ function M.partial(func, ...)
   end
 end
 
+function M.itemgetter(item)
+  return function(table)
+    return table[item]
+  end
+end
+
 return M
