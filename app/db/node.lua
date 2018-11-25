@@ -97,7 +97,7 @@ function node.iter_outputs(id, required)
 end
 
 function node.iter_recursive(id, required)
-  -- Iterates all connected nodes recursively including current node
+  -- Iterates over all connected nodes recursively including current node
 
   local function generator(param, state)
 
@@ -105,29 +105,29 @@ function node.iter_recursive(id, required)
     local state = table.deepcopy(state)
     local inner = state.inner
 
-    repeat
+    if not inner or not inner.state then
 
-      if not inner or not inner.state then
-
-        state.current = state.current + 1
-
-        inner = {}
-        inner.gen, inner.param, inner.state = fun.chain(
-          node.iter_inputs(state.queue[state.current], param.required),
-          node.iter_outputs(state.queue[state.current], param.required)
-        )
-        state.inner = inner
+      if state.current == #state.queue then
+        return nil, nil  -- stop iteration
       end
 
-      inner.state, taken_node = inner.gen(inner.param, inner.state)
-      if inner.state and not fun.index(taken_node.id, state.queue) then
-        table.insert(state.queue, taken_node.id)
-        return state, taken_node
-      end
+      state.current = state.current + 1
 
-    until state.current == #state.queue and not inner.state
+      inner = {}
+      inner.gen, inner.param, inner.state = fun.chain(
+        node.iter_inputs(state.queue[state.current], param.required),
+        node.iter_outputs(state.queue[state.current], param.required)
+      )
+      state.inner = inner
+    end
 
-    return nil, nil
+    inner.state, taken_node = inner.gen(inner.param, inner.state)
+    if inner.state and not fun.index(taken_node.id, state.queue) then
+      table.insert(state.queue, taken_node.id)
+      return state, taken_node
+    end
+
+    return generator(param, state)  -- tail recursion
   end
 
   local function make_generator(id, required)
