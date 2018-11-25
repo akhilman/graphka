@@ -1,5 +1,6 @@
 local Record = require 'record'
 local rx = require 'rx'
+local rxtnt = require 'rxtnt'
 local util = require 'util'
 
 local assertup = util.assertup
@@ -157,6 +158,73 @@ function node.disconnect(input_id, output_id)
   local row = box.space.wire:delete({input_id, output_id})
   assertup(row, "No such node connection")
   return Record.from_tuple('wire', row)
+end
+
+-- Observe
+
+function node.observe(source)
+
+  local db_node_events = rxtnt.ObservableTrigger.create(function(...)
+    box.space['node']:on_replace(...)
+  end)
+  local db_wire_events = rxtnt.ObservableTrigger.create(function(...)
+    box.space['wire']:on_replace(...)
+  end)
+
+  if source then
+    --- stop observable on source's onComplete
+    local function stop()
+      db_node_events:stop()
+      db_wire_events:stop()
+    end
+    source:subscribe(rx.util.noop, stop, stop)
+  end
+
+  local node_events = db_node_events:map(function(old, new)
+    old = old and Record.from_tuple('node', old) or nil
+    new = new and Record.from_tuple('node', new) or nil
+    if not old then
+      return {
+        topic = 'node_added',
+        node_id = new.id
+      }
+    elseif not new then
+      return {
+        topic = 'node_removed',
+        node_id = old.id
+      }
+    elseif new.enabled ~= old.enabled then
+      return {
+        topic = new.enabled and 'node_enabled' or 'node_disabled',
+        node_id = new.id,
+      }
+    else
+      return {
+        topic = 'node_altered',
+        node_id = new.id,
+      }
+    end
+  end)
+
+  local wire_events = db_wire_events:map(function(old, new)
+    old = old and Record.from_tuple('wire', old) or nil
+    new = new and Record.from_tuple('wire', new) or nil
+    if not old then
+      return {
+        topic = 'node_connected',
+        input_id = new.input_id,
+        output_id = new.output_id
+      }
+    elseif not new then
+      return {
+        topic = 'node_disconnected',
+        input_id = old.input_id,
+        output_id = old.output_id
+      }
+    end
+  end)
+
+  return node_events:merge(wire_events)
 end
 
 return M
