@@ -92,6 +92,9 @@ function Record:to_map()
 end
 
 function Record:to_tuple()
+  -- TODO use space.frommap() in tarantool 1.10
+  -- local space = box.space[self._schema]
+  -- return space:frommap(self)
   local fields = get_fields(self._schema)
   local tuple = {}
   local len = 0
