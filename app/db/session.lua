@@ -93,17 +93,17 @@ function session.observe(source)
     new = new and Record.from_tuple('session', new) or nil
     if not old then
       return {
-        topic = 'session:added',
+        topic = 'session_added',
         session_id = new.id
       }
     elseif not new then
       return {
-        topic = 'session:removed',
+        topic = 'session_removed',
         session_id = old.id
       }
     elseif new.name ~= old.name then
       return {
-        topic = 'session:renamed',
+        topic = 'session_renamed',
         session_id = new.id,
         new_name = new.name
       }
