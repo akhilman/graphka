@@ -1,14 +1,16 @@
+Record = require 'record'
+db = require 'db'
 fiber = require 'fiber'
 reqrep = require 'reqrep'
-util = require 'util'
 rx = require 'rx'
+util = require 'util'
 
 --- API
 
 local methods = {}
 
 local function format_node(node)
-  assert(session._schema == 'node', 'node must be node record')
+  assert(node._schema == 'node', 'node must be node record')
   local ret = node:to_map()
   ret.inputs = db.node.iter_inputs(node.id)
     :map(util.itemgetter('name'))
@@ -34,11 +36,14 @@ function methods.add_node(name, params)
       priority = 0,
       start_offset = 0,
       history_size = -1,
-      temporary = false,
     },
     params
   )
-  local node = Record.from_map(params)
+  if params.temporary then
+    params.tmp_session_id = box.session.id()
+    params.temporary = nil
+  end
+  local node = Record.from_map('node', params)
   node.id = nil
   node.name = name
   node = db.node.add(node)
@@ -75,6 +80,7 @@ function methods.connect_nodes(input, output, params)
 
   local input_node = db.node.get_by_name(input)
   local output_node = db.node.get_by_name(output)
+  params = params or {}
   local input_required = fun.operator.truth(params.input_required)
   local output_required = fun.operator.truth(params.output_required)
 
@@ -100,91 +106,22 @@ local services = {}
 
 function services.node(config, source, scheduler)
 
+  if not db.node.is_ready() then
+    log.warn('Node database not ready.')
+    return
+  end
+
   local sink = rx.Subject.create()
 
-  reqrep.dispatch(source, 'node:req', methods):subscribe(sink)
+  reqrep.dispatch(source, 'node_req', methods):subscribe(sink)
 
   source
-    :filter(function(msg) return msg.topic == 'session:disconnected' end)
-    :map(function(msg)
-      return box.space['node'].index['tmp_session_id']:select(msg.session_id)
+    :filter(function(msg) return msg.topic == 'session_removed' end)
+    :subscribe(function(msg)
+      return db.node.remove_tmp(msg.session_id)
     end)
-    :map(rx.Observable.fromTable)
-    :flatMap()
-    :map(function(row) return row[F.node.id] end)
-    :subscribe(function(id) box.space['node']:delete(id) end)
 
-  --- Trigger handlers
-
-  local on_node_replace = util.partial(fiber.create, function(old, new)
-    fiber.sleep(0.02)
-    if not new and not old then
-      return
-    end
-    local old_enabled = false
-    local enabled = new and new[F.node.enabled] or false
-    local node_id = new and new[F.node.id] or old[F.node.id]
-    if not old then
-      sink:onNext({topic = 'node:added', node_id = node_id})
-    else
-      old_enabled = old[F.node.enabled]
-    end
-    if old_enabled ~= enabled then
-      sink:onNext({topic = enabled and 'node:enabled' or 'node:disabled',
-                   node_id = node_id})
-    end
-    if not new then
-      sink:onNext({topic = 'node:removed', node_id = node_id})
-      local node_to_remove = fun.totable(fun.chain(
-        -- remove node by required sink
-        fun.iter(box.space['wire'].index['sink_id']:pairs(node_id))
-          :filter(function(link) return link[F.wire.sink_required] end)
-          :map(function(link) return link[F.wire.source_id] end),
-        -- remove node by required source
-        fun.iter(box.space['wire'].index['source_id']:pairs(node_id))
-          :filter(function(link) return link[F.wire.source_required] end)
-          :map(function(link) return link[F.wire.sink_id] end)
-      ):filter(util.partial(fun.operator.ne, node_id)))
-      -- remove dead links
-      fun.iter(box.space['wire'].index['sink_id']:pairs(node_id))
-        :map(function(link) return link[F.wire.id] end)
-        :each(function(id) box.space['wire']:delete(id) end)
-      fun.iter(box.space['wire'].index['source_id']:pairs(node_id))
-        :map(function(link) return link[F.wire.id] end)
-        :each(function(id) box.space['wire']:delete(id) end)
-      -- remove node
-      fun.iter(node_to_remove)
-        :each(function(id) box.space['node']:delete(id) end)
-    end
-  end)
-
-  local on_link_replace = util.partial(fiber.create, function(old, new)
-    fiber.sleep(0.02)
-    if not old then
-      sink:onNext({
-        topic = 'node:connected',
-        node_id = new[F.wire.sink_id],
-        source_id = new[F.wire.source_id]
-      })
-    elseif not new then
-      sink:onNext({
-        topic = 'node:disconnected',
-        node_id = old[F.wire.sink_id],
-        source_id = old[F.wire.source_id]
-      })
-    end
-  end)
-
-  local function remove_handlers()
-    box.space['node']:on_replace(nil, on_node_replace)
-    box.space['wire']:on_replace(nil, on_link_replace)
-  end
-
-  if box.space['node'] and box.space['wire'] then
-    box.space['node']:on_replace(on_node_replace)
-    box.space['wire']:on_replace(on_link_replace)
-    source:subscribe(rx.util.noop, remove_handlers, remove_handlers)
-  end
+  db.node.observe(source):delay(0.01, scheduler):subscribe(sink)
 
   return sink
 
