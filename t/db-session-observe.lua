@@ -23,7 +23,7 @@ end)
 test:is(#events, 0, 'Events is empty')
 
 session = db.session.add(Record.from_map('session', {
-  id = box.session.id(),
+  id = 255,
   name = 'test_session',
   peer = 'test_peer',
   ctime = clock.time()
