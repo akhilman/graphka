@@ -11,8 +11,6 @@ local default_config = {
 }
 
 local app = {
-  scheduler = rxtnt.FiberScheduler.create(),
-  hub = rx.BehaviorSubject.create(),
   config = {},
 }
 
@@ -20,6 +18,9 @@ function app.init(config)
   log.info('app "graphka" init')
 
   app.config = util.merge_tables(default_config, config)
+  app.scheduler = rxtnt.FiberScheduler.create()
+  app.hub = rx.BehaviorSubject.create()
+
   box.spacer = require 'spacer'({
       migrations = app.config.migrations,
       automigrate = app.config.automigrate
