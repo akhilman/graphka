@@ -84,6 +84,11 @@ local function tnt_prepare(cfg_args)
     }
     box.spacer:makemigration('init')
     box.spacer:migrate_up()
+    app.destroy()
+
+    app.init{
+      migrations = fio.pathjoin(dir, 'migrations')
+    }
 end
 
 return {
