@@ -21,7 +21,7 @@ local function format_node(node)
   ret.requires = fun.chain(
     db.node.iter_inputs(node.id, true),
     db.node.iter_outputs(node.id, true)
-  ):totable()
+  ):map(util.itemgetter('name')):totable()
   ret.temporary = fun.operator.truth(ret.tmp_session_id)
   ret.tmp_session_id = nil
   return ret
