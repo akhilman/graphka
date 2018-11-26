@@ -53,42 +53,35 @@ function session.iter()
     :map(util.partial(Record.from_tuple, 'session'))
 end
 
-function session.observe_connections(source)
+function session.observe_connections()
 
-  local conn = rxtnt.ObservableTrigger.create(box.session.on_connect)
-  local disconn = rxtnt.ObservableTrigger.create(box.session.on_disconnect)
+  local conn_trigger = rxtnt.ObservableTrigger.create(
+    box.session.on_connect)
+  local disconn_trigger = rxtnt.ObservableTrigger.create(
+    box.session.on_disconnect)
 
-  if source then
-    local function stop()
-      conn:stop()
-      disconn:stop()
-    end
-    source:subscribe(rx.util.noop, stop, stop)
-  end
-
-  return rx.Observable.merge(
-    conn:map(function()
+  local events = rx.Observable.merge(
+    conn_trigger:map(function()
       return 'connected', box.session.id(), box.session.peer() end),
-    disconn:map(function()
+    disconn_trigger:map(function()
       return 'disconnected', box.session.id(), box.session.peer() end)
   )
+
+  events.stop = function ()
+    conn_trigger:stop()
+    disconn_trigger:stop()
+  end
+
+  return events
 end
 
-function session.observe(source)
+function session.observe()
 
-  local db_events = rxtnt.ObservableTrigger.create(function(...)
+  local trigger = rxtnt.ObservableTrigger.create(function(...)
     box.space['session']:on_replace(...)
   end)
 
-  if source then
-    --- stop observable on source's onComplete
-    local function stop()
-      db_events:stop()
-    end
-    source:subscribe(rx.util.noop, stop, stop)
-  end
-
-  local events = db_events:map(function(old, new)
+  local events = trigger:map(function(old, new)
     old = old and Record.from_tuple('session', old) or nil
     new = new and Record.from_tuple('session', new) or nil
     if not old then
@@ -109,6 +102,10 @@ function session.observe(source)
       }
     end
   end)
+
+  events.stop = function()
+    trigger:stop()
+  end
 
   return events
 end

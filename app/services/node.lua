@@ -113,6 +113,10 @@ function services.node(config, source, scheduler)
 
   local sink = rx.Subject.create()
 
+  local events = db.node.observe()
+  source:subscribe(rx.util.noop, events.stop, events.stop)
+  events:delay(0.01, scheduler):subscribe(sink)
+
   reqrep.dispatch(source, 'node_req', methods):subscribe(sink)
 
   source
@@ -120,8 +124,6 @@ function services.node(config, source, scheduler)
     :subscribe(function(msg)
       return db.node.remove_tmp(msg.session_id)
     end)
-
-  db.node.observe(source):delay(0.01, scheduler):subscribe(sink)
 
   return sink
 

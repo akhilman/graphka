@@ -30,7 +30,13 @@ function services.session(config, source, scheduler)
   end
 
   local sink = rx.Subject.create()
-  local conn_events = db.session.observe_connections(source)
+
+  local conn_events = db.session.observe_connections()
+  source:subscribe(rx.util.noop, conn_events.stop, conn_events.stop)
+
+  local events = db.session.observe(source)
+  source:subscribe(rx.util.noop, events.stop, events.stop)
+  events:delay(0.01, scheduler):subscribe(sink)
 
   reqrep.dispatch(source, 'session:req', methods):subscribe(sink)
 
@@ -51,8 +57,6 @@ function services.session(config, source, scheduler)
   conn_events
     :filter(function(evt, id, peer) return evt == 'disconnected' end)
     :subscribe(function(evt, id, peer) db.session.remove(id) end)
-
-  db.session.observe(source):delay(0.01, scheduler):subscribe(sink)
 
   return sink
 

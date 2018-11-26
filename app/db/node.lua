@@ -174,25 +174,16 @@ end
 
 -- Observe
 
-function node.observe(source)
+function node.observe()
 
-  local db_node_events = rxtnt.ObservableTrigger.create(function(...)
+  local node_trigger = rxtnt.ObservableTrigger.create(function(...)
     box.space['node']:on_replace(...)
   end)
-  local db_wire_events = rxtnt.ObservableTrigger.create(function(...)
+  local wire_trigger = rxtnt.ObservableTrigger.create(function(...)
     box.space['wire']:on_replace(...)
   end)
 
-  if source then
-    --- stop observable on source's onComplete
-    local function stop()
-      db_node_events:stop()
-      db_wire_events:stop()
-    end
-    source:subscribe(rx.util.noop, stop, stop)
-  end
-
-  local node_events = db_node_events:map(function(old, new)
+  local node_events = node_trigger:map(function(old, new)
     old = old and Record.from_tuple('node', old) or nil
     new = new and Record.from_tuple('node', new) or nil
     if not old then
@@ -218,7 +209,7 @@ function node.observe(source)
     end
   end)
 
-  local wire_events = db_wire_events:map(function(old, new)
+  local wire_events = wire_trigger:map(function(old, new)
     old = old and Record.from_tuple('wire', old) or nil
     new = new and Record.from_tuple('wire', new) or nil
     if not old then
@@ -236,7 +227,14 @@ function node.observe(source)
     end
   end)
 
-  return node_events:merge(wire_events)
+  local events = node_events:merge(wire_events)
+
+  events.stop = function ()
+    node_trigger:stop()
+    wire_trigger:stop()
+  end
+
+  return events
 end
 
 return M
