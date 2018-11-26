@@ -19,23 +19,23 @@ function M.api(api_table, api_topic, source)
 
   -- Call
 
-  local requests = {}
+  local pending_calls = {}
   local last_id = 0
 
   local sink = rx.Subject.create()
 
   local function make_call(call_topic, method, ...)
     local call_id
-    local req
+    local call
     local args = {...}
     call_id = last_id + 1
     last_id = call_id
-    req = {
+    call = {
       call_id = call_id,
-      responce = nil,
+      result = nil,
       cond = fiber.cond()
     }
-    requests[tostring(call_id)] = req
+    pending_calls[tostring(call_id)] = call
     sink:onNext({
       topic = call_topic,
       result_topic = result_topic,
@@ -43,28 +43,28 @@ function M.api(api_table, api_topic, source)
       call_id = call_id,
       args = args,
     })
-    if not req.responce then
-      req.cond:wait()
+    if not call.result then
+      call.cond:wait()
     end
-    local rep = req.responce
-    requests[tostring(call_id)] = nil
-    return rep.success, rep.result
+    local msg = call.result
+    pending_calls[tostring(call_id)] = nil
+    return msg.success, msg.result
   end
 
   local function on_result(msg)
-    local req = requests[tostring(msg.call_id)]
-    if req then
-      req.responce = msg
-      req.cond:signal()
+    local call = pending_calls[tostring(msg.call_id)]
+    if call then
+      call.result = msg
+      call.cond:signal()
     end
   end
 
   local function on_error(...)
     local args = rx.util.pack(...)
-    for _, req in pairs(requests) do
-      if not req.responce then
-        req.responce = {...}
-        req.cond:signal()
+    for _, call in pairs(pending_calls) do
+      if not call.result then
+        call.result = {...}
+        call.cond:signal()
       end
     end
   end
