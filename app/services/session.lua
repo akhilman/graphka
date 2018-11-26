@@ -1,9 +1,9 @@
 local Record = require 'record'
+local api = require 'api'
 local clock = require 'clock'
 local db = require 'db'
 local fun = require 'fun'
 local log = require 'log'
-local reqrep = require 'reqrep'
 local rx = require 'rx'
 
 --- API
@@ -38,7 +38,7 @@ function services.session(config, source, scheduler)
   source:subscribe(rx.util.noop, events.stop, events.stop)
   events:delay(0.01, scheduler):subscribe(sink)
 
-  reqrep.dispatch(source, 'session:req', methods):subscribe(sink)
+  api.publish(methods, 'session', 'api', source):subscribe(sink)
 
   local success, session = pcall(db.session.get_current)
   if not success then

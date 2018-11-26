@@ -21,6 +21,8 @@ function app.init(config)
   app.scheduler = rxtnt.FiberScheduler.create()
   app.hub = rx.BehaviorSubject.create()
 
+  app.hub:dump('hub', require('json').encode)  -- debug
+
   box.spacer = require 'spacer'({
       migrations = app.config.migrations,
       automigrate = app.config.automigrate
@@ -45,9 +47,7 @@ function app.init(config)
     init_service(name, serv)
   end
 
-  --- debug
-  app.hub:dump('hub', require('json').encode)
-  app.hub:onNext({'hello', 'world'})
+  app.hub:onNext({ topic = 'ready' })
 
 end
 

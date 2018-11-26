@@ -1,4 +1,4 @@
-reqrep = require 'reqrep'
+api = require 'api'
 
 local services = {}
 local methods = {}
@@ -12,7 +12,7 @@ function methods.error(err)
 end
 
 function services.echo(config, source, scheduler)
-  return reqrep.dispatch(source, 'echo', methods)
+  return api.publish(methods, 'echo', 'api', source)
 end
 
 return {
