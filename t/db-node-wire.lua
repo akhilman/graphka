@@ -37,6 +37,7 @@ for _, name in ipairs({'A', 'B', 'C', 'D', 'E', 'F', 'G'}) do
     name = name,
     enabled = false,
     priority = 0,
+    start_offset = 0,
     history_size = 100,
     tmp_session_id = box.session.id()
   }))

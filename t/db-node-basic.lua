@@ -29,6 +29,7 @@ node = db.node.add(Record.from_map('node', {
   name = 'test_node',
   enabled = false,
   priority = 2,
+  start_offset = 0,
   history_size = 100,
   tmp_session_id = box.session.id()
 }))
@@ -78,6 +79,7 @@ node = db.node.add(Record.from_map('node', {
   name = 'test_node',
   enabled = false,
   priority = 2,
+  start_offset = 0,
   history_size = 100,
   tmp_session_id = box.session.id()
 }))

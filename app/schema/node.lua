@@ -7,6 +7,7 @@ spacer:space({
     { name = 'name', type = 'string' },
     { name = 'enabled', type = 'boolean' },
     { name = 'priority', type = 'integer' },
+    { name = 'start_offset', type = 'number' },
     { name = 'history_size', type = 'integer' },
     { name = 'tmp_session_id', type = 'unsigned', is_nullable = true },
   },
