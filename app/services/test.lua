@@ -12,7 +12,7 @@ function methods.error(err)
 end
 
 function services.echo(config, source, scheduler)
-  return api.publish(methods, 'echo', 'api', source)
+  return api.publish(methods, 'test', 'api', source)
 end
 
 return {

@@ -4,10 +4,10 @@ local S = {}
 local M = {}
 
 for _, mod in ipairs{
-  require 'services.echo',
-  require 'services.session',
+  require 'services.api',
   require 'services.node',
-  require 'services.api'
+  require 'services.session',
+  require 'services.test'
 } do
   for k, v in pairs(mod) do
     M[k] = v
