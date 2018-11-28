@@ -141,13 +141,10 @@ function M.iter_recursive(id, required)
     return generator(param, state)  -- tail recursion
   end
 
-  local function make_generator(id, required)
-    local param = { required = required }
-    local state = { current = 0, queue = {id}, inner = nil }
-    return generator, param, state
-  end
+  local param = { required = required }
+  local state = { current = 0, queue = {id}, inner = nil }
 
-  return fun.chain({M.get(id)}, fun.iter(make_generator(id, required)))
+  return fun.chain({M.get(id)}, fun.iter(generator, param, state))
 end
 
 function M.connect(input_id, output_id, input_required, output_required)
