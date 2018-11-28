@@ -7,20 +7,19 @@ local util = require 'util'
 local assertup = util.assertup
 
 local M = {}
-local session = {}
-M.session = session
+M = {}
 
-function session.is_ready()
+function M.is_ready()
   return fun.operator.truth(box.space.session)
 end
 
-function session.add(session)
+function M.add(session)
   assertup(session._schema == 'session', 'session must be session record')
   local row = box.space.session:insert(session:to_tuple())
   return Record.from_tuple('session', row)
 end
 
-function session.rename(id, name)
+function M.rename(id, name)
   assertup(type(id) == 'number', 'id must be integer')
   assertup(type(name) == 'string', 'name must be string')
   local row = box.space.session:update(id, {
@@ -30,30 +29,30 @@ function session.rename(id, name)
   return Record.from_tuple('session', row)
 end
 
-function session.remove(id)
+function M.remove(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.session:delete(id)
   assertup(row, "No such session")
   return Record.from_tuple('session', row)
 end
 
-function session.get(id)
+function M.get(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.session:get(id)
   assertup(row, "No such session")
   return Record.from_tuple('session', row)
 end
 
-function session.get_current()
-  return session.get(box.session.id())
+function M.get_current()
+  return M.get(box.session.id())
 end
 
-function session.iter()
+function M.iter()
   return fun.iter(box.space.session:pairs())
     :map(util.partial(Record.from_tuple, 'session'))
 end
 
-function session.observe_connections()
+function M.observe_connections()
 
   local conn_trigger = rxtnt.ObservableTrigger.create(
     box.session.on_connect)
@@ -75,7 +74,7 @@ function session.observe_connections()
   return events
 end
 
-function session.observe()
+function M.observe()
 
   local trigger = rxtnt.ObservableTrigger.create(function(...)
     box.space['session']:on_replace(...)
@@ -110,4 +109,6 @@ function session.observe()
   return events
 end
 
-return M
+return {
+  session = M
+}

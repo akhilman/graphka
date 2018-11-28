@@ -6,23 +6,21 @@ local util = require 'util'
 local assertup = util.assertup
 
 local M = {}
-local node = {}
-M.node = node
 
-function node.is_ready()
+function M.is_ready()
   return (fun.operator.truth(box.space.node)
           and fun.operator.truth(box.space.wire))
 end
 
 -- Node
 
-function node.add(node)
+function M.add(node)
   assertup(node._schema == 'node', 'node must be node record')
   local row = box.space.node:insert(node:to_tuple())
   return Record.from_tuple('node', row)
 end
 
-function node.remove(id)
+function M.remove(id)
   local function remove_one(id)
     fun.chain(fun.iter(box.space.wire.index['input_id']:pairs(id)),
               fun.iter(box.space.wire.index['output_id']:pairs(id)))
@@ -34,25 +32,25 @@ function node.remove(id)
     return Record.from_tuple('node', row)
   end
   return fun.iter(
-    node.iter_recursive(id, true)
+    M.iter_recursive(id, true)
     :map(util.itemgetter('id'))
     :totable()
   ):map(remove_one):totable()
 end
 
-function node.remove_tmp(session_id)
+function M.remove_tmp(session_id)
   local removed = {}
   for _, n in fun.iter(
       box.space.node.index['tmp_session_id']:select(session_id))
     :map(util.partial(Record.from_tuple, 'node')) do
     if not fun.index(n.id, removed) then
-      removed = util.concatenate(removed, node.remove(n.id))
+      removed = util.concatenate(removed, M.remove(n.id))
     end
   end
   return removed
 end
 
-function node.alter(id, params)
+function M.alter(id, params)
   assertup(type(id) == 'number', 'id must be integer')
   assertup(type(params) == 'table', 'params must be table')
   assertup(fun.length(params) > 0, 'params must be non empty table')
@@ -71,14 +69,14 @@ function node.alter(id, params)
   return Record.from_tuple('node', row)
 end
 
-function node.get(id)
+function M.get(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.node:get(id)
   assertup(row, 'No such node')
   return Record.from_tuple('node', row)
 end
 
-function node.get_by_name(name)
+function M.get_by_name(name)
   assertup(type(name) == 'string', 'name must be string')
   print(name)
   local row = box.space.node.index['name']:get(name)
@@ -86,35 +84,35 @@ function node.get_by_name(name)
   return Record.from_tuple('node', row)
 end
 
-function node.iter()
+function M.iter()
   return fun.iter(box.space.node:pairs())
     :map(util.partial(Record.from_tuple, 'node'))
 end
 
 -- Wire
 
-function node.iter_inputs(id, required)
+function M.iter_inputs(id, required)
   assertup(type(id) == 'number', 'id must be integer')
   return fun.iter(box.space.wire.index['output_id']:pairs(id))
     :map(util.partial(Record.from_tuple, 'wire'))
     :filter(function(wire) return not required or wire.input_required end)
-    :map(function(wire) return node.get(wire.input_id) end)
+    :map(function(wire) return M.get(wire.input_id) end)
 end
 
-function node.iter_outputs(id, required)
+function M.iter_outputs(id, required)
   assertup(type(id) == 'number', 'id must be integer')
   return fun.iter(box.space.wire.index['input_id']:pairs(id))
     :map(util.partial(Record.from_tuple, 'wire'))
     :filter(function(wire) return not required or wire.output_required end)
-    :map(function(wire) return node.get(wire.output_id) end)
+    :map(function(wire) return M.get(wire.output_id) end)
 end
 
-function node.iter_recursive(id, required)
+function M.iter_recursive(id, required)
   -- Iterates over all connected nodes recursively including current node
 
   local function generator(param, state)
 
-    local taken_node
+    local node
     local state = table.deepcopy(state)
     local inner = state.inner
 
@@ -128,16 +126,16 @@ function node.iter_recursive(id, required)
 
       inner = {}
       inner.gen, inner.param, inner.state = fun.chain(
-        node.iter_inputs(state.queue[state.current], param.required),
-        node.iter_outputs(state.queue[state.current], param.required)
+        M.iter_inputs(state.queue[state.current], param.required),
+        M.iter_outputs(state.queue[state.current], param.required)
       )
       state.inner = inner
     end
 
-    inner.state, taken_node = inner.gen(inner.param, inner.state)
-    if inner.state and not fun.index(taken_node.id, state.queue) then
-      table.insert(state.queue, taken_node.id)
-      return state, taken_node
+    inner.state, node = inner.gen(inner.param, inner.state)
+    if inner.state and not fun.index(node.id, state.queue) then
+      table.insert(state.queue, node.id)
+      return state, node
     end
 
     return generator(param, state)  -- tail recursion
@@ -149,10 +147,10 @@ function node.iter_recursive(id, required)
     return generator, param, state
   end
 
-  return fun.chain({node.get(id)}, fun.iter(make_generator(id, required)))
+  return fun.chain({M.get(id)}, fun.iter(make_generator(id, required)))
 end
 
-function node.connect(input_id, output_id, input_required, output_required)
+function M.connect(input_id, output_id, input_required, output_required)
   assertup(type(input_id) == 'number', 'input_id must be integer')
   assertup(type(output_id) == 'number', 'output_id must be integer')
   local wire = Record.create('wire')
@@ -164,7 +162,7 @@ function node.connect(input_id, output_id, input_required, output_required)
   return Record.from_tuple('wire', row)
 end
 
-function node.disconnect(input_id, output_id)
+function M.disconnect(input_id, output_id)
   assertup(type(input_id) == 'number', 'id must be integer')
   assertup(type(output_id) == 'number', 'id must be integer')
   local row = box.space.wire:delete({input_id, output_id})
@@ -174,7 +172,7 @@ end
 
 -- Observe
 
-function node.observe()
+function M.observe()
 
   local node_trigger = rxtnt.ObservableTrigger.create(function(...)
     box.space['node']:on_replace(...)
@@ -237,4 +235,6 @@ function node.observe()
   return events
 end
 
-return M
+return {
+  node = M
+}
