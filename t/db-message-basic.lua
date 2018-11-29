@@ -12,10 +12,11 @@ local null = msgpack.NULL
 tnt.cfg{}
 
 local test = tap.test("db.message: Basic")
-test:plan(19)
+test:plan(17)
 
 local success, result
 local node
+local start_offset = clock.time()
 
 -- Space is ready
 
@@ -23,11 +24,12 @@ ret = db.message.is_ready()
 test:ok(ret, 'Message space is ready')
 
 -- Add message node not exist
+
 success, result = pcall(
   db.message.add,
   record('message').from_map({
     node_id = 255,
-    offset = 10,
+    offset = start_offset,
     data = 'hello'
   })
 )
@@ -51,7 +53,6 @@ local nodes = fun.range(4)
 
 -- Add messages
 
-local start_offset = clock.time()
 fun.iter(nodes)
   :take_n(3)
   :each(function(node)
@@ -66,6 +67,18 @@ fun.iter(nodes)
         }))
       end)
   end)
+
+-- Add message with offset smaller then last one
+
+success, result = pcall(
+  db.message.add,
+  record('message').from_map({
+    node_id = nodes[1].id,
+    offset = start_offset,
+    data = 'hello'
+  })
+)
+test:ok(not success, 'Can not add message with offset less then last one')
 
 -- Check summary
 
@@ -137,9 +150,6 @@ result = fun.zip(
     fun.iter(messages):map(util.itemgetter('offset')):tail()
   ):all(fun.operator.le)
 test:ok(result, 'All message\'s sorted by offset')
-
-print(middle_offset)
-print(require 'yaml' .encode(result))
 
 tnt.finish()
 test:check()
