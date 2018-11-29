@@ -78,7 +78,6 @@ end
 
 function M.get_by_name(name)
   assertup(type(name) == 'string', 'name must be string')
-  print(name)
   local row = box.space.node.index['name']:get(name)
   assertup(row, string.format('No such node "%s".', name))
   return record('node').from_tuple(row)
