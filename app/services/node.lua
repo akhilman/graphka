@@ -1,7 +1,7 @@
-Record = require 'record'
 api = require 'api'
 db = require 'db'
 fiber = require 'fiber'
+record = require 'record'
 rx = require 'rx'
 util = require 'util'
 
@@ -43,7 +43,7 @@ function methods.add_node(name, params)
     params.tmp_session_id = box.session.id()
     params.temporary = nil
   end
-  local node = Record.from_map('node', params)
+  local node = record('node').from_map(params)
   node.id = nil
   node.name = name
   node = db.node.add(node)

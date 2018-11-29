@@ -1,9 +1,9 @@
-local Record = require 'record'
 local api = require 'api'
 local clock = require 'clock'
 local db = require 'db'
 local fun = require 'fun'
 local log = require 'log'
+local record = require 'record'
 local rx = require 'rx'
 
 --- API
@@ -11,7 +11,7 @@ local rx = require 'rx'
 local methods = {}
 
 function methods.list_sessions()
-  return db.session.iter():map(Record.to_map):totable()
+  return db.session.iter():map(record('session').to_map):totable()
 end
 
 function methods.rename_session(name)
@@ -43,16 +43,15 @@ function services.session(config, source, scheduler)
   local success, session = pcall(db.session.get_current)
   if not success then
     xpcall(function() db.session.add(
-      Record.create(
-        'session', box.session.id(), 'server', '', clock.time()))
-      end, log.error)
+      record('session').create(box.session.id(), 'server', '', clock.time()))
+    end, log.error)
   end
 
   conn_events
     :filter(function(evt, id, peer) return evt == 'connected' end)
     :subscribe(function(evt, id, peer)
       db.session.add(
-        Record.create('session', id, 'unnamed', peer, clock.time())) end)
+        record('session').create(id, 'unnamed', peer, clock.time())) end)
 
   conn_events
     :filter(function(evt, id, peer) return evt == 'disconnected' end)

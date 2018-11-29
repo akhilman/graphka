@@ -1,10 +1,10 @@
 local clock = require 'clock'
+local db = require 'db'
+local fiber = require 'fiber'
+local record = require 'record'
+local rx = require 'rx'
 local tap = require 'tap'
 local tnt = require 't.tnt'
-local rx = require 'rx'
-local fiber = require 'fiber'
-local db = require 'db'
-local Record = require 'record'
 
 tnt.cfg{}
 
@@ -28,7 +28,7 @@ test:is(ret[1].name, 'server', 'Current session name')
 
 -- Add session
 
-session = db.session.add(Record.from_map('session', {
+session = db.session.add(record('session').from_map({
   id = 255,
   name = 'test_session',
   peer = 'test_peer',

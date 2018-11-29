@@ -1,9 +1,9 @@
+local db = require 'db'
+local fiber = require 'fiber'
+local record = require 'record'
+local rx = require 'rx'
 local tap = require 'tap'
 local tnt = require 't.tnt'
-local rx = require 'rx'
-local fiber = require 'fiber'
-local db = require 'db'
-local Record = require 'record'
 
 tnt.cfg{}
 
@@ -25,7 +25,7 @@ test:is(#ret, 0, 'Empty node list')
 
 -- Add node
 
-node = db.node.add(Record.from_map('node', {
+node = db.node.add(record('node').from_map({
   name = 'test_node',
   enabled = false,
   priority = 2,
@@ -75,7 +75,7 @@ test:is(#ret, 0, 'Empty node list')
 
 -- Remove by session id
 
-node = db.node.add(Record.from_map('node', {
+node = db.node.add(record('node').from_map({
   name = 'test_node',
   enabled = false,
   priority = 2,

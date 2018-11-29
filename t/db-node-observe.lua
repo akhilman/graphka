@@ -1,7 +1,7 @@
-local Record = require 'record'
 local clock = require 'clock'
 local db = require 'db'
 local fiber = require 'fiber'
+local record = require 'record'
 local rx = require 'rx'
 local tap = require 'tap'
 local tnt = require 't.tnt'
@@ -23,7 +23,7 @@ end)
 test:is(#events, 0, 'Events is empty')
 
 for _, name in ipairs({'A', 'B'}) do
-  nodes[name] = db.node.add(Record.from_map('node', {
+  nodes[name] = db.node.add(record('node').from_map({
     name = name,
     enabled = false,
     priority = 2,

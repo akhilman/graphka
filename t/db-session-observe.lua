@@ -1,7 +1,7 @@
-local Record = require 'record'
 local clock = require 'clock'
 local db = require 'db'
 local fiber = require 'fiber'
+local record = require 'record'
 local rx = require 'rx'
 local tap = require 'tap'
 local tnt = require 't.tnt'
@@ -22,7 +22,7 @@ end)
 
 test:is(#events, 0, 'Events is empty')
 
-session = db.session.add(Record.from_map('session', {
+session = db.session.add(record('session').from_map({
   id = 255,
   name = 'test_session',
   peer = 'test_peer',

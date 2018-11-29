@@ -1,10 +1,10 @@
+local db = require 'db'
+local fiber = require 'fiber'
+local record = require 'record'
+local rx = require 'rx'
 local tap = require 'tap'
 local tnt = require 't.tnt'
-local rx = require 'rx'
-local fiber = require 'fiber'
-local db = require 'db'
 local util = require 'util'
-local Record = require 'record'
 
 
 --[[
@@ -33,7 +33,7 @@ test:is(#ret, 0, 'Empty node list')
 -- Add nodes
 
 for _, name in ipairs({'A', 'B', 'C', 'D', 'E', 'F', 'G'}) do
-  nodes[name] = db.node.add(Record.from_map('node', {
+  nodes[name] = db.node.add(record('node').from_map({
     name = name,
     enabled = false,
     priority = 0,

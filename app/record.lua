@@ -1,28 +1,20 @@
 local util = require 'util'
 local rx = require 'rx'
 
+local assertup = util.assertup
+
+local M = {}
+
 --- @class Record
 
 local Record = {}
 
-local cached_fields = {}
-local function get_fields(schema)
-  local fields = cached_fields[schema]
-  if fields then
-    return fields
-  end
-  assert(F[schema], string.format('No such schema "%s"', schema))
-  local fields = fun.iter(F[schema]):map(function(k, v) return k end):totable()
-  table.sort(fields, function(a, b) return F[schema][a] < F[schema][b] end)
-  cached_fields[schema] = fields
-  return fields
-end
+local cached_classes = {}
 
 function Record:__index(key)
-  local fields = get_fields(self._schema)
+  local fields = rawget(getmetatable(self), '_fields')
   key = type(key) == 'number' and fields[key] or key
-
-  if key == '_schema' or fun.index(key, fields) then
+  if fun.index(key, fields) then
     return rawget(self, key)
   else
     local v = getmetatable(self)[key]
@@ -30,86 +22,104 @@ function Record:__index(key)
       return v
     end
   end
-  error(string.format('No such field "%s"', key))
+  error(string.format('No such field "%s"', key), 2)
 end
 
 function Record:__newindex(key, value)
-  local fields = get_fields(self._schema)
+  local fields = rawget(getmetatable(self), '_fields')
   key = type(key) == 'number' and fields[key] or key
-  assert(fun.index(key, fields), string.format('No such field "%s"', key))
+  if not fun.index(key, fields) then
+    error(string.format('No such field "%s"', key), 2)
+  end
   return rawset(self, key, value)
 end
 
 function Record:__len()
-  return #get_fields(self._schema)
+  return #self._fields
 end
 
 function Record:__tostring()
   return string.format("Record(%s)", self._schema)
 end
 
-function Record.create(schema, ...)
-  local record = {}
-  record._schema = schema
-  if select('#', ...) > 0 then
-    local fields = get_fields(schema)
-    for n=1, math.min(#fields, select('#', ...)), 1 do
-      record[fields[n]] = select(n, ...)
-    end
+function Record.new(schema)
+
+  local New
+
+  New = cached_classes[schema]
+  if New then
+    return New
   end
-  return setmetatable(record, Record)
-end
 
-function Record.from_map(schema, table)
-  local fields = get_fields(schema)
-  local record = Record.create(schema)
-  for n, field in ipairs(fields) do
-    record[field] = table[field]
+  assert(F[schema], string.format('No such schema "%s"', schema))
+  local fields = fun.iter(F[schema]):map(function(k, v) return k end):totable()
+  table.sort(fields, function(a, b) return F[schema][a] < F[schema][b] end)
+
+  local to_tuple = T[schema].tuple
+  local from_tuple = T[schema].dict
+
+  New = {}
+  New._schema = schema
+  New._fields = fields
+  New.__len = rx.util.constant(#fields)
+  New.__tostring = rx.util.constant(util.snake_to_camel(schema))
+  New.__index = Record.__index
+  New.__newindex = Record.__newindex
+
+  New.create = function(...)
+    return setmetatable(from_tuple({...}), New)
   end
-  return record
-end
 
-function Record.from_tuple(schema, tuple)
-  local fields = get_fields(schema)
-  local record = Record.create(schema)
-  for n, field in ipairs(fields) do
-    record[field] = tuple[n]
+  New.from_tuple = function(table)
+    return setmetatable(from_tuple(table), New)
   end
-  return record
-end
 
-function Record:copy()
-  return Record.from_map(self._schema, self:to_map())
-end
-
-function Record:to_map()
-  local fields = get_fields(self._schema)
-  local table = {}
-  for n, field in ipairs(fields) do
-    table[field] = self[field]
+  New.from_map = function(table)
+    return New.from_tuple(to_tuple(table))
   end
-  return table
-end
 
-function Record:to_tuple()
-  -- TODO use space.frommap() in tarantool 1.10
-  -- local space = box.space[self._schema]
-  -- return space:frommap(self)
-  local fields = get_fields(self._schema)
-  local tuple = {}
-  local len = 0
-  for n, field in ipairs(fields) do
-    tuple[n] = self[field]
+  New.to_tuple = to_tuple
+
+  New.to_map = function(self)
+    return from_tuple(self:to_tuple())
   end
-  return tuple
+
+  New.copy = function(self)
+    return New.from_tuple(self:to_tuple())
+  end
+
+  setmetatable(New, Record)
+
+  cached_classes[schema] = New
+
+  return New
 end
 
-function Record:unpack()
-  return rx.util.unpack(self:to_tuple())
+--- Module
+
+M.__call = function(self, schema)
+  return Record.new(schema)
 end
 
-function Record:get_fields()
-  return get_fields(self._schema)
+M.__index = function(self, key)
+  local v = rawget(M, key)
+  if not v then
+    v = Record.new(util.camel_to_snake(key))
+  end
+  return v
 end
 
-return Record
+setmetatable(M, M)
+
+return M
+
+--[[
+local classes = fun.iter(F)
+  :map(util.partial(util.take_n_args, 1))
+  :map(util.revpartial(string.match, '^%l'))
+  :filter(fun.operator.truth)
+  :map(function(v) return util.snake_to_camel(v), make_record(v) end)
+  :tomap()
+
+M = util.merge_tables(M, classes)
+]]--

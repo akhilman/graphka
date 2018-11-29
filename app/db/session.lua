@@ -1,5 +1,5 @@
-local Record = require 'record'
 local fun = require 'fun'
+local record = require 'record'
 local rx = require 'rx'
 local rxtnt = require 'rxtnt'
 local util = require 'util'
@@ -16,7 +16,7 @@ end
 function M.add(session)
   assertup(session._schema == 'session', 'session must be session record')
   local row = box.space.session:insert(session:to_tuple())
-  return Record.from_tuple('session', row)
+  return record('session').from_tuple(row)
 end
 
 function M.rename(id, name)
@@ -26,21 +26,21 @@ function M.rename(id, name)
     {'=', F.session.name, name}
   })
   assertup(row, "No such session")
-  return Record.from_tuple('session', row)
+  return record('session').from_tuple(row)
 end
 
 function M.remove(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.session:delete(id)
   assertup(row, "No such session")
-  return Record.from_tuple('session', row)
+  return record('session').from_tuple(row)
 end
 
 function M.get(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.session:get(id)
   assertup(row, "No such session")
-  return Record.from_tuple('session', row)
+  return record('session').from_tuple(row)
 end
 
 function M.get_current()
@@ -49,7 +49,7 @@ end
 
 function M.iter()
   return fun.iter(box.space.session:pairs())
-    :map(util.partial(Record.from_tuple, 'session'))
+    :map(record('session').from_tuple)
 end
 
 function M.observe_connections()
@@ -81,8 +81,8 @@ function M.observe()
   end)
 
   local events = trigger:map(function(old, new)
-    old = old and Record.from_tuple('session', old) or nil
-    new = new and Record.from_tuple('session', new) or nil
+    old = old and record('session').from_tuple(old) or nil
+    new = new and record('session').from_tuple(new) or nil
     if not old then
       return {
         topic = 'session_added',
