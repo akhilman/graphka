@@ -6,6 +6,9 @@ local log = require 'log'
 local record = require 'record'
 local rx = require 'rx'
 
+local M = {}
+
+
 --- API
 
 local methods = {}
@@ -20,9 +23,7 @@ end
 
 --- Service
 
-local services = {}
-
-function services.session(config, source, scheduler)
+function M.service(config, source, scheduler)
 
   if not db.session.is_ready() then
     log.warn('Sessions database not ready.')
@@ -62,6 +63,4 @@ function services.session(config, source, scheduler)
 end
 
 
-return {
-  services = services
-}
+return M

@@ -1,9 +1,12 @@
-api = require 'api'
-db = require 'db'
-fiber = require 'fiber'
-record = require 'record'
-rx = require 'rx'
-util = require 'util'
+local api = require 'api'
+local db = require 'db'
+local fiber = require 'fiber'
+local record = require 'record'
+local rx = require 'rx'
+local util = require 'util'
+
+local M = {}
+
 
 --- API
 
@@ -102,9 +105,7 @@ end
 
 --- Service
 
-local services = {}
-
-function services.node(config, source, scheduler)
+function M.service(config, source, scheduler)
 
   if not db.node.is_ready() then
     log.warn('Node database not ready.')
@@ -129,6 +130,5 @@ function services.node(config, source, scheduler)
 
 end
 
-return {
-  services = services
-}
+
+return M

@@ -4,10 +4,10 @@ local util = require 'util'
 
 local partial = util.partial
 
-local services = {}
+local M = {}
 
 
-function services.api(config, source, scheduler)
+function M.service(config, source, scheduler)
 
   --- API ACL
   box.once('access:v1', function()
@@ -29,6 +29,4 @@ function services.api(config, source, scheduler)
 end
 
 
-return {
-  services = services
-}
+return M
