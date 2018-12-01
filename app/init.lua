@@ -37,17 +37,29 @@ function app.init(config)
   -- Load services
   local on_service_error
   local init_service
+  local subscribtions = {}
   function init_service(name, serv)
     log.info(string.format('Starting "%s" service.', name))
-    local sink = serv(app.config, app.hub, app.scheduler)
+    local source = rx.Subject.create()
+    local source_sub = app.hub:subscribe(source)
+    local sink = serv(app.config, source, app.scheduler)
+    local sink_sub = nil
     if sink then
-      sink:catch(util.partial(on_service_error, name, serv)):subscribe(app.hub)
+      sink_sub = sink
+        :catch(util.partial(on_service_error, name, serv))
+        :subscribe(app.hub)
     end
+    subscribtions[name] = {source_sub, sink_sub}
   end
   function on_service_error(name, serv, err)
+    for _m, sub in pairs(subscribtions[name]) do
+      sub:unsubscribe()
+    end
+    subscribtions[name] = nil
     log.error('Error in service "' .. name .. '": ' .. err)
     fiber.sleep(1)
-    return init_service(name, serv)
+    init_service(name, serv)
+    return true
   end
   local serv
   for _, name in ipairs(app.config.services) do

@@ -1,5 +1,6 @@
 local api = require 'api'
 local fiber = require 'fiber'
+local util = require 'util'
 
 local M = {}
 
@@ -17,11 +18,30 @@ function methods.delay(delay)
 end
 
 function methods.error(err)
-  error {err}
+  if not err then err = 'Error in method' end
+  error(err)
+end
+
+function methods.unprotected_error(err)
+  if not err then err = 'Error in method' end
+  return 'unprotected_error'
 end
 
 function M.service(config, source, scheduler)
-  return api.publish(methods, 'test', 'api', source)
+
+  local sink = rx.Subject.create()
+
+  api.publish(methods, 'test', 'api', source):subscribe(sink)
+
+  source
+    :filter(util.itemeq('topic', 'test_call'))
+    :filter(util.itemeq('method', 'unprotected_error'))
+    :map(util.itemgetter('args'))
+    :map(rx.util.unpack)
+    :map(function(txt) print('error', txt);  error(txt) end)
+    :subscribe(sink)
+
+  return sink
 end
 
 
