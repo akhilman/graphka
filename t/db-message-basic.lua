@@ -1,11 +1,13 @@
 local clock = require 'clock'
 local db = require 'db'
 local fiber = require 'fiber'
+local fun = require 'fun'
 local msgpack = require 'msgpack'
 local record = require 'record'
 local rx = require 'rx'
 local tap = require 'tap'
 local tnt = require 't.tnt'
+local util = require 'util'
 
 local null = msgpack.NULL
 
