@@ -70,9 +70,7 @@ function M.api(api_table, api_topic, source)
   end
 
   source
-    :filter(function(msg)
-      return msg.topic == result_topic
-    end)
+    :filter(util.itemeq('topic', result_topic))
     :subscribe(on_result, on_error, on_error)
 
   -- Publish
@@ -87,9 +85,7 @@ function M.api(api_table, api_topic, source)
   end
 
   source
-    :filter(function(msg)
-      return msg.topic == publish_topic
-    end)
+    :filter(util.itemeq('topic', publish_topic))
     :subscribe(on_publish)
 
   return sink
@@ -127,9 +123,7 @@ function M.publish(func_map, module_topic, api_topic, source)
   local call_topic = module_topic .. '_call'
   local publish_topic = api_topic .. '_publish'
 
-  local filtered = source:filter(function(msg)
-    return msg.topic == call_topic
-  end)
+  local filtered = source:filter(util.itemeq('topic', call_topic))
   local call_sink = filtered
     :filter(function(msg) return msg.topic == call_topic end)
     :map(util.partial(resolve, module_topic, func_map))
@@ -137,7 +131,7 @@ function M.publish(func_map, module_topic, api_topic, source)
     :map(call)
 
   local publish_sink = source
-    :filter(function(msg) return msg.topic == 'ready' end)
+    :filter(util.itemeq('topic', 'ready'))
     :map(function()
       return rx.Observable.fromTable(func_map, pairs, true)
     end)

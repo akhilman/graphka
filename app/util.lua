@@ -63,6 +63,12 @@ function M.itemgetter(item)
   end
 end
 
+function M.itemeq(item, value)
+  return function(table)
+    return table[item] == value
+  end
+end
+
 function M.take_n_args(n, ...)
   return rx.util.unpack(
     fun.totable(
