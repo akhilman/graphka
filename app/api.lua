@@ -8,7 +8,7 @@ local assertup = util.assertup
 local M = {}
 
 
-function M.api(api_table, api_topic, source)
+function M.api(config, api_table, api_topic, source)
 
   assertup(type(api_table) == 'table', 'api_table should be table')
   assertup(type(api_topic) == 'string', 'api_topic should be string')
@@ -42,9 +42,13 @@ function M.api(api_table, api_topic, source)
       method = method,
       call_id = call_id,
       args = args,
+      session_id = box.session.id(),
     })
     if not call.result then
-      call.cond:wait()
+      local ok = call.cond:wait(config.timeout)
+      if not ok then
+        call.result = { success = false, result = 'Call timeout' }
+      end
     end
     local msg = call.result
     pending_calls[tostring(call_id)] = nil
@@ -92,9 +96,13 @@ function M.api(api_table, api_topic, source)
 
 end
 
-local function call(func, req)
+local function call(func, req, pass_call)
 
-  local success, result = pcall(func, rx.util.unpack(req.args))
+  local args = req.args
+  if pass_call then
+    args = util.concatenate({req}, args)
+  end
+  local success, result = pcall(func, rx.util.unpack(args))
 
   return {
     topic = req.result_topic,
@@ -113,7 +121,7 @@ local function resolve(call_topic, func_map, req)
   return func
 end
 
-function M.publish(func_map, module_topic, api_topic, source)
+function M.publish(func_map, module_topic, api_topic, source, pass_call)
 
   assertup(type(func_map) == 'table', 'func_map should be table')
   assertup(type(module_topic) == 'string', 'call_topic should be string')
@@ -128,7 +136,7 @@ function M.publish(func_map, module_topic, api_topic, source)
     :filter(function(msg) return msg.topic == call_topic end)
     :map(util.partial(resolve, module_topic, func_map))
     :zip(filtered)
-    :map(call)
+    :map(util.revpartial(call, pass_call))
 
   local publish_sink = source
     :filter(util.itemeq('topic', 'ready'))

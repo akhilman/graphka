@@ -1,4 +1,5 @@
 local app = require 'app'
+local fiber = require 'fiber'
 local fio = require 'fio'
 local util = require 'util'
 
@@ -22,12 +23,14 @@ function test_app.init(cfg)
     cfg,
     { migrations = migrations }
   )
+
   app.init(cfg)
   box.spacer:makemigration('init')
   box.spacer:migrate_up()
   app.destroy()
 
   app.init(cfg)
+  fiber.sleep(0.1)
 end
 
 function test_app.destroy()

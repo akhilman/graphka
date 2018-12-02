@@ -43,10 +43,6 @@ function M.get(id)
   return record('session').from_tuple(row)
 end
 
-function M.get_current()
-  return M.get(box.session.id())
-end
-
 function M.iter()
   return fun.iter(box.space.session:pairs())
     :map(record('session').from_tuple)

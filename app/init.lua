@@ -7,6 +7,7 @@ local util = require 'util'
 
 local default_config = {
   migrations = './migrations',
+  timeout = 10,
   services = {
     'api',
     'node',
@@ -42,7 +43,11 @@ function app.init(config)
     log.info(string.format('Starting "%s" service.', name))
     local source = rx.Subject.create()
     local source_sub = app.hub:subscribe(source)
-    local sink = serv(app.config, source, app.scheduler)
+    local sink = serv(
+      app.config,
+      source:delay(0, app.scheduler),
+      app.scheduler
+    )
     local sink_sub = nil
     if sink then
       sink_sub = sink

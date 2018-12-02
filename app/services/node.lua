@@ -30,7 +30,7 @@ local function format_node(node)
   return ret
 end
 
-function methods.add_node(name, params)
+function methods.add_node(call, name, params)
   assert(type(name) == 'string', 'name must be string')
   assert(not params or type(params) == 'table', 'params must be table')
   params = util.merge_tables(
@@ -43,7 +43,7 @@ function methods.add_node(name, params)
     params
   )
   if params.temporary then
-    params.tmp_session_id = box.session.id()
+    params.tmp_session_id = call.session_id
     params.temporary = nil
   end
   local node = record('node').from_map(params)
@@ -53,19 +53,19 @@ function methods.add_node(name, params)
   return format_node(node)
 end
 
-function methods.enable_node(name)
+function methods.enable_node(call, name)
   assert(type(name) == 'string', 'name must be string')
   local node = db.node.get_by_name(name)
   db.node.alter(node.id, {enabled = true})
 end
 
-function methods.disable_node(name)
+function methods.disable_node(call, name)
   assert(type(name) == 'string', 'name must be string')
   local node = db.node.get_by_name(name)
   db.node.alter(node.id, {enabled = false})
 end
 
-function methods.remove_node(name)
+function methods.remove_node(call, name)
   assert(type(name) == 'string', 'name must be string')
   local node = db.node.get_by_name(name)
   local removed = db.node.remove(node.id)
@@ -76,7 +76,7 @@ function methods.list_nodes()
   return db.node.iter():map(format_node):totable()
 end
 
-function methods.connect_nodes(input, output, params)
+function methods.connect_nodes(call, input, output, params)
   assert(type(input) == 'string', 'name must be string')
   assert(type(output) == 'string', 'name must be string')
   assert(not params or type(params) == 'table', 'params must be table')
@@ -93,7 +93,7 @@ function methods.connect_nodes(input, output, params)
   )
 end
 
-function methods.disconnect_nodes(input, output)
+function methods.disconnect_nodes(call, input, output)
   assert(type(input) == 'string', 'name must be string')
   assert(type(output) == 'string', 'name must be string')
 
@@ -118,7 +118,7 @@ function M.service(config, source, scheduler)
   source:subscribe(rx.util.noop, events.stop, events.stop)
   events:delay(0.01, scheduler):subscribe(sink)
 
-  api.publish(methods, 'node', 'api', source):subscribe(sink)
+  api.publish(methods, 'node', 'api', source, true):subscribe(sink)
 
   source
     :filter(function(msg) return msg.topic == 'session_removed' end)

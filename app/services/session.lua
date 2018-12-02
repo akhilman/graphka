@@ -13,12 +13,12 @@ local M = {}
 
 local methods = {}
 
-function methods.list_sessions()
+function methods.list_sessions(call)
   return db.session.iter():map(record('session').to_map):totable()
 end
 
-function methods.rename_session(name)
-  db.session.rename(box.session.id(), name)
+function methods.rename_session(call, name)
+  db.session.rename(call.session_id, name)
 end
 
 --- Service
@@ -39,9 +39,9 @@ function M.service(config, source, scheduler)
   source:subscribe(rx.util.noop, events.stop, events.stop)
   events:delay(0.01, scheduler):subscribe(sink)
 
-  api.publish(methods, 'session', 'api', source):subscribe(sink)
+  api.publish(methods, 'session', 'api', source, true):subscribe(sink)
 
-  local success, session = pcall(db.session.get_current)
+  local success, session = pcall(db.session.get, box.session.id())
   if not success then
     xpcall(function() db.session.add(
       record('session').create(box.session.id(), 'server', '', clock.time()))
