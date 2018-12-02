@@ -45,7 +45,7 @@ function methods.add_node(call, name, params)
     params.tmp_session_id = call.session_id
     params.temporary = nil
   end
-  local node = record('node').from_map(params)
+  local node = record.Node.from_map(params)
   node.id = nil
   node.name = name
   node = db.node.add(node)

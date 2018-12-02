@@ -31,7 +31,7 @@ function M.add(message)
 
   row = box.space.message_summary:get(message.node_id)
   if row then
-    local summary = record('message_summary').from_tuple(row)
+    local summary = record.MessageSummary.from_tuple(row)
     assertup(
       summary.last_offset <= message.offset,
       'Message offset should be greater or equal to previous offset'
@@ -42,10 +42,10 @@ function M.add(message)
   end
 
   row = box.space.message:insert(message:to_tuple())
-  message = record('message_index').from_tuple(row)
+  message = record.MessageIndex.from_tuple(row)
 
   row = box.space.message_index:insert(T.message_index.tuple(message))
-  message_index = record('message_index').from_tuple(row)
+  message_index = record.MessageIndex.from_tuple(row)
 
   box.space.message_summary:upsert(
     {
@@ -71,11 +71,11 @@ function M.summary(node_id)
   local summary
   row = box.space.message_summary:get(node_id)
   if row then
-    summary = record('message_summary').from_tuple(row)
+    summary = record.MessageSummary.from_tuple(row)
   else
     row = box.space.node:get(node_id)
     assertup(row, 'No node with id ' .. node_id)
-    summary = record('message_summary').from_map({node_id=node_id, count=0})
+    summary = record.MessageSummary.from_map({node_id=node_id, count=0})
   end
   return summary
 end
@@ -84,7 +84,7 @@ function M.get(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.message:get(id)
   assertup(row, 'No such message')
-  return record('message').from_tuple(row)
+  return record.Message.from_tuple(row)
 end
 
 function M.iter_index(index, iterator, start, node_id)
@@ -103,7 +103,7 @@ function M.iter_index(index, iterator, start, node_id)
 
   return fun.iter(box.space.message_index.index['node_id_and_' .. index]
       :pairs({node_id, start}, iterator))
-    :map(record('message_index').from_tuple)
+    :map(record.MessageIndex.from_tuple)
     :take_while(function(m) return m.node_id == node_id end)
 end
 
