@@ -9,8 +9,6 @@ local M = {}
 
 local Record = {}
 
-local cached_classes = {}
-
 function Record:__index(key)
   local fields = rawget(getmetatable(self), '_fields')
   key = type(key) == 'number' and fields[key] or key
@@ -45,11 +43,6 @@ end
 function Record.new(schema)
 
   local New
-
-  New = cached_classes[schema]
-  if New then
-    return New
-  end
 
   assert(F[schema], string.format('No such schema "%s"', schema))
   local fields = fun.iter(F[schema]):map(function(k, v) return k end):totable()
@@ -90,36 +83,27 @@ function Record.new(schema)
 
   setmetatable(New, Record)
 
-  cached_classes[schema] = New
-
   return New
 end
 
 --- Module
 
 M.__call = function(self, schema)
-  return Record.new(schema)
+  return self[util.snake_to_camel(schema)]
 end
 
 M.__index = function(self, key)
-  local v = rawget(M, key)
-  if not v then
-    v = Record.new(util.camel_to_snake(key))
+  local val = rawget(M, key)
+  if val then
+    return val
   end
-  return v
+  assertup(string.match(key, '^%u'),
+           'Record classs name should starat with uppercase character')
+  val = Record.new(util.camel_to_snake(key))
+  rawset(M, key, val)
+  return val
 end
 
 setmetatable(M, M)
 
 return M
-
---[[
-local classes = fun.iter(F)
-  :map(util.partial(util.take_n_args, 1))
-  :map(util.revpartial(string.match, '^%l'))
-  :filter(fun.operator.truth)
-  :map(function(v) return util.snake_to_camel(v), make_record(v) end)
-  :tomap()
-
-M = util.merge_tables(M, classes)
-]]--
