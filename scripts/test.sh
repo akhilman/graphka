@@ -42,7 +42,7 @@ for t in $tests; do
       || exit $?
 done
 
-if (cat $LOGFILE | grep -q '^# failed subtest:'); then
+if (cat $LOGFILE | grep -q '^not ok'); then
   echo Some test failed. See $LOGFILE for details.
   exit 1
 fi
