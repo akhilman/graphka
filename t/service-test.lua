@@ -12,19 +12,19 @@ test:plan(5)
 
 local success, rep
 
-success, responce = graphka.echo('Hello world!')
+success, responce = app.echo('Hello world!')
 test:is(success, true, 'Test echo API method success')
 test:is_deeply(responce, {'Hello world!'}, 'Test echo API method responce')
 
-success, responce = graphka.error('Hello world!')
+success, responce = app.error('Hello world!')
 test:is(success, false, 'Test error API method success')
 
-success, responce = graphka.delay(2)
+success, responce = app.delay(2)
 test:is(success, false, 'Test API tmeout error')
 
-graphka.unprotected_error('Error')
+app.unprotected_error('Error')
 fiber.sleep(1.5)
-success, responce = graphka.echo('Hello world!')
+success, responce = app.echo('Hello world!')
 test:is(success, true, 'Service restarted after error')
 
 app.destroy()
