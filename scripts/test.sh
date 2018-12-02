@@ -25,6 +25,10 @@ ${ROOT}/.rocks/lib64/lua/5.1/?.${SOEXT};\
 ${ROOT}/.rocks/lib64/tarantool/?.${SOEXT};\
 ;"
 
+LOGFILE=/tmp/test.log
+
+echo -n > $LOGFILE
+
 if [ $# == 0 ]; then
   tests=${ROOT}/t/*.lua
 else
@@ -32,5 +36,13 @@ else
 fi
 for t in $tests; do
     echo "Running `basename $t`..."
-    LUA_PATH=${LUA_PATH} LUA_CPATH=${LUA_CPATH} ${TARANTOOL} $t || exit $?
+    LUA_PATH=${LUA_PATH} LUA_CPATH=${LUA_CPATH} ${TARANTOOL} $t \
+      2>&1 \
+      | tee -a $LOGFILE \
+      || exit $?
 done
+
+if (cat $LOGFILE | grep -q '^# failed subtest:'); then
+  echo Some test failed. See $LOGFILE for details.
+  exit 1
+fi
