@@ -10,8 +10,9 @@ local default_config = {
   timeout = 10,
   services = {
     'api',
-    'node',
     'session',
+    'node',
+    'message',
     'test'
   }
 }
