@@ -114,8 +114,10 @@ function M.iter_by_id(node_id, min_id, max_id)
     return fun.iter({})
   end
 
-  min_id = min_id and math.max(min_id, summary.first_id) or summary.first_id
-  max_id = max_id and math.min(max_id, summary.last_id) or summary.last_id
+  min_id = util.truth(min_id) and math.max(min_id, summary.first_id)
+    or summary.first_id
+  max_id = util.truth(max_id) and math.min(max_id, summary.last_id)
+    or summary.last_id
 
   return M.iter_index('id', 'GE', min_id, node_id)
     :take_while(function(m) return m.id <= max_id end)
@@ -130,8 +132,9 @@ function M.iter(node_ids, offset, get_prev)
     fun.iter(node_ids):all(function(id) return type(id) == 'number' end),
     'node_ids should be integer of list of integers'
   )
-  offset = offset or 0
+  offset = util.truth(offset) and offset or 0
   assertup(type(offset) == 'number', 'offset should be number of nil')
+  get_prev = util.truth(get_prev)
 
   local function generator(param, state)
 

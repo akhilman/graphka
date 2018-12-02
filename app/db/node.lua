@@ -152,8 +152,8 @@ function M.connect(input_id, output_id, input_required, output_required)
   local wire = record('wire').create()
   wire.input_id = input_id
   wire.output_id = output_id
-  wire.input_required = fun.operator.truth(input_required)
-  wire.output_required = fun.operator.truth(output_required)
+  wire.input_required = util.truth(input_required)
+  wire.output_required = util.truth(output_required)
   local row = box.space.wire:insert(wire:to_tuple())
   return record('wire').from_tuple(row)
 end

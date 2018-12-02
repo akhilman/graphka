@@ -1,5 +1,8 @@
 local rx = require 'rx'
 local fun = require 'fun'
+local msgpack = require 'msgpack'
+
+local NULL = msgpack.NULL
 
 local M = {}
 
@@ -99,6 +102,10 @@ function M.camel_to_snake(txt)
   local pre = s > 1 and string.sub(txt, 1, s-1) .. '_' or ''
   txt = pre .. string.lower(c) .. string.sub(txt, e+1)
   return M.camel_to_snake(txt)
+end
+
+function M.truth(value)
+  return fun.operator.truth(value) and value ~= msgpack.NULL
 end
 
 return M
