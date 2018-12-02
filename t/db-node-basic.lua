@@ -1,3 +1,4 @@
+local app = require 't.app'
 local db = require 'db'
 local fiber = require 'fiber'
 local record = require 'record'
@@ -6,6 +7,7 @@ local tap = require 'tap'
 local tnt = require 't.tnt'
 
 tnt.cfg{}
+app.init{}
 
 local test = tap.test("db.node: Basic")
 test:plan(19)
@@ -88,6 +90,7 @@ ret = db.node.remove_tmp(box.session.id())
 test:is(#ret, 1, 'Removed tmp count')
 test:is_deeply(ret[1], node, 'Removed tmp node')
 
+app.destroy()
 tnt.finish()
 test:check()
 os.exit()

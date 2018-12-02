@@ -1,8 +1,10 @@
+local app = require 't.app'
 local tap = require 'tap'
 local tnt = require 't.tnt'
 local rx = require 'rx'
 
 tnt.cfg{}
+app.init{}
 
 local test = tap.test("Nodes module")
 test:plan(2)
@@ -27,6 +29,7 @@ graphka.remove_node('node6')
 success, ret = graphka.list_nodes()
 test:is(#ret, 0, 'No nodes in list')
 
+app.destroy()
 tnt.finish()
 test:check()
 os.exit()

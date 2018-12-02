@@ -1,3 +1,4 @@
+local app = require 't.app'
 local clock = require 'clock'
 local db = require 'db'
 local fiber = require 'fiber'
@@ -7,6 +8,7 @@ local tap = require 'tap'
 local tnt = require 't.tnt'
 
 tnt.cfg{}
+app.init{}
 
 local test = tap.test("db.session: Basic")
 test:plan(17)
@@ -72,6 +74,7 @@ test:is_deeply(ret, session, 'Remove session')
 ret = db.session.iter():totable()
 test:is(#ret, 1, 'Empty session list')
 
+app.destroy()
 tnt.finish()
 test:check()
 os.exit()

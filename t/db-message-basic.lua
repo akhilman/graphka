@@ -1,3 +1,4 @@
+local app = require 't.app'
 local clock = require 'clock'
 local db = require 'db'
 local fiber = require 'fiber'
@@ -12,6 +13,7 @@ local util = require 'util'
 local null = msgpack.NULL
 
 tnt.cfg{}
+app.init{}
 
 local test = tap.test("db.message: Basic")
 test:plan(17)
@@ -153,6 +155,7 @@ result = fun.zip(
   ):all(fun.operator.le)
 test:ok(result, 'All message\'s sorted by offset')
 
+app.destroy()
 tnt.finish()
 test:check()
 os.exit()

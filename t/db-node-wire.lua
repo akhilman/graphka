@@ -1,3 +1,4 @@
+local app = require 't.app'
 local db = require 'db'
 local fiber = require 'fiber'
 local record = require 'record'
@@ -20,6 +21,7 @@ local util = require 'util'
 --]]
 
 tnt.cfg{}
+app.init{}
 
 local test = tap.test("db.node: Node dependences and connections")
 test:plan(29)
@@ -143,6 +145,7 @@ test:is(#ret, 0, '0 outputs for E after disconnect')
 ret = db.node.iter_inputs(nodes.F.id):map(util.itemgetter('name')):totable()
 test:is(#ret, 0, '0 inputs for F after disconnect')
 
+app.destroy()
 tnt.finish()
 test:check()
 os.exit()

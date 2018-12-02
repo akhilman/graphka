@@ -77,18 +77,6 @@ local function tnt_prepare(cfg_args)
 
     box.cfg(cfg_args)
 
-    -- setup app
-    local app = require 'app'
-    app.init{
-      migrations = fio.pathjoin(dir, 'migrations')
-    }
-    box.spacer:makemigration('init')
-    box.spacer:migrate_up()
-    app.destroy()
-
-    app.init{
-      migrations = fio.pathjoin(dir, 'migrations')
-    }
 end
 
 return {

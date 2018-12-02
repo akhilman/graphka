@@ -1,3 +1,4 @@
+local app = require 't.app'
 local clock = require 'clock'
 local db = require 'db'
 local fiber = require 'fiber'
@@ -7,6 +8,7 @@ local tap = require 'tap'
 local tnt = require 't.tnt'
 
 tnt.cfg{}
+app.init{}
 
 local test = tap.test("db.node: create remove")
 test:plan(26)
@@ -89,6 +91,7 @@ for _, n, topic in fun.enumerate({
     string.format('Event %s output_id', topic))
 end
 
+app.destroy()
 tnt.finish()
 test:check()
 os.exit()
