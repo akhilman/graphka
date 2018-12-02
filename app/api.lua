@@ -45,7 +45,7 @@ function M.api(config, api_table, api_topic, source)
       session_id = box.session.id(),
     })
     if not call.result then
-      local ok = call.cond:wait(config.timeout)
+      local ok = call.cond:wait(config.timeout + 1)
       if not ok then
         call.result = { success = false, result = 'Call timeout' }
       end
