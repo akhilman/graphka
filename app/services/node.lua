@@ -1,6 +1,5 @@
 local api = require 'api'
 local db = require 'db'
-local fiber = require 'fiber'
 local record = require 'record'
 local rx = require 'rx'
 local util = require 'util'
