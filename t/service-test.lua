@@ -19,8 +19,8 @@ test:is_deeply(responce, {'Hello world!'}, 'Test echo API method responce')
 success, responce = app.error('Hello world!')
 test:is(success, false, 'Test error API method success')
 
-success, responce = app.delay(2)
-test:is(success, false, 'Test API tmeout error')
+success, responce = app.delay(10)
+test:is(success, false, 'Test API timeout error')
 
 app.unprotected_error('Error')
 fiber.sleep(1.5)

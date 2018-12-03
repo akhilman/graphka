@@ -115,7 +115,7 @@ function M.service(config, source, scheduler)
 
   local events = db.node.observe()
   source:subscribe(rx.util.noop, events.stop, events.stop)
-  events:delay(0.01, scheduler):subscribe(sink)
+  events:subscribe(sink)
 
   api.publish(methods, 'node', 'app', source, true):subscribe(sink)
 
