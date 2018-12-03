@@ -203,8 +203,28 @@ function M.iter(node_ids, offset, get_prev)
 end
 
 function M.remove(node_id, count)
-  -- TODO implement db.message.remove()
-  error('Not implemented')
+  local prev
+  fun.chain(M.iter_index('id', 'GT', 0, node_id), {'drop_summary'})
+    :take_n(count + 1)
+    :each(function(index)
+      if prev then
+        if index == 'drop_summary' then
+          box.space.message_summary:delete(node_id)
+        else
+          box.space.message_summary:update(
+            node_id,
+            {
+              { '=', F.message_summary.first_id, index.id },
+              { '=', F.message_summary.first_offset, index.offset },
+              { '-', F.message_summary.count, 1 }
+            }
+          )
+        end
+        box.space.message_index:delete(prev.id)
+        box.space.message:delete(prev.id)
+      end
+      prev = index
+    end)
 end
 
 return {
