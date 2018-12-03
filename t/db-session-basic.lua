@@ -11,7 +11,7 @@ tnt.cfg{}
 app.init{}
 
 local test = tap.test("db.session: Basic")
-test:plan(17)
+test:plan(15)
 
 local success, ret
 local session
@@ -51,12 +51,6 @@ test:is_deeply(ret[2], session, 'Test session in list equals new session')
 
 ret = db.session.get(session.id)
 test:is_deeply(ret, session, 'Get session by id')
-
--- Get current session
-
-ret = db.session.get_current()
-test:is(ret.id, box.session.id(), 'Current session id')
-test:is(ret.name, 'server', 'Current session name')
 
 -- Rename session
 
