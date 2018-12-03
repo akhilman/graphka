@@ -22,6 +22,26 @@ function M.is_ready()
     :all(fun.operator.truth)
 end
 
+function M.summary(node_id)
+  assertup(type(node_id) == 'number', 'node_id must be integer')
+  local row
+  local summary
+  row = box.space.message_summary:get(node_id)
+  if row then
+    summary = record.MessageSummary.from_tuple(row)
+  else
+    row = box.space.node:get(node_id)
+    assertup(row, 'No node with id ' .. node_id)
+    summary = record.MessageSummary.from_map({node_id=node_id, count=0})
+  end
+  return summary
+end
+
+function M.iter_summary()
+  return fun.iter(box.space.message_summary:pairs())
+    :map(record.MessageSummary.from_tuple)
+end
+
 function M.add(message)
 
   assertup(message._schema == 'message', "message should be message record")
@@ -63,21 +83,6 @@ function M.add(message)
   )
 
   return message_index
-end
-
-function M.summary(node_id)
-  assertup(type(node_id) == 'number', 'node_id must be integer')
-  local row
-  local summary
-  row = box.space.message_summary:get(node_id)
-  if row then
-    summary = record.MessageSummary.from_tuple(row)
-  else
-    row = box.space.node:get(node_id)
-    assertup(row, 'No node with id ' .. node_id)
-    summary = record.MessageSummary.from_map({node_id=node_id, count=0})
-  end
-  return summary
 end
 
 function M.get(id)
@@ -202,10 +207,11 @@ function M.iter(node_ids, offset, get_prev)
     :map(M.get)
 end
 
-function M.remove(node_id, count)
+function M.remove(node_id, limit)
+  local n_removed = 0
   local prev
   fun.chain(M.iter_index('id', 'GT', 0, node_id), {'drop_summary'})
-    :take_n(count + 1)
+    :take_n(limit + 1)
     :each(function(index)
       if prev then
         if index == 'drop_summary' then
@@ -222,9 +228,12 @@ function M.remove(node_id, count)
         end
         box.space.message_index:delete(prev.id)
         box.space.message:delete(prev.id)
+        n_removed = n_removed + 1
       end
       prev = index
     end)
+
+    return n_removed
 end
 
 return {

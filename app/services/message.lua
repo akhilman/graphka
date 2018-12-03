@@ -56,6 +56,58 @@ function methods.message_summary()
   ):tomap()
 end
 
+--- Purge messages
+
+local function purge_loop(config, control_chan, pending_nodes, forced)
+
+  local interval = config.purge_interval
+  local limit = config.purge_message_limit
+
+  if not forced then
+    local cmd = control_chan:get(interval)
+    if cmd == 'stop' then
+      return
+    elseif cmd == 'force' then
+      forced = true
+      pending_nodes = db.message.iter_summary():totable()
+    end
+    if not pending_nodes or #pending_nodes == 0 then
+      pending_nodes = db.message.iter_summary():totable()
+    end
+  else
+    fiber.sleep(0.1)
+  end
+
+  local summary = table.remove(pending_nodes)
+  if not summary then
+    return purge_loop(config, control_chan)
+  end
+
+  log.debug(string.format('Purging messages form node #%d',
+                          summary.node_id))
+
+  local to_remove = 0
+  local ok, node = pcall(db.node.get, summary.node_id)
+  if not ok then
+    to_remove = summary.count
+  elseif ok and node.history_size > 0 then
+    to_remove = math.max(0, summary.count - node.history_size)
+  end
+
+  if to_remove > 0 then
+    local n_removed = db.message.remove(
+      summary.node_id,
+      math.min(to_remove, limit)
+    )
+    log.verbose(string.format("%d messages removed from node #%s",
+                              n_removed, summary.node_id))
+    if n_removed < to_remove then
+      table.insert(pending_nodes, db.message.summary(summary.node_id))
+    end
+  end
+
+  return purge_loop(config, control_chan, pending_nodes, forced)
+end
 
 --- Service
 
@@ -67,6 +119,13 @@ function M.service(config, source, scheduler)
   end
 
   local sink = rx.Subject.create()
+
+  local purge_ctrl = fiber.channel()
+  fiber.create(purge_loop, config, purge_ctrl)
+  local function force_purge() purge_ctrl:put('force') end
+  local function stop_purge() purge_ctrl:put('stop') end
+  source:subscribe(rx.util.noop, stop_purge, stop_purge)
+  source:filter(util.itemeq('topic', 'purge')):subscribe(force_purge)
 
   api.publish(methods, 'message', 'app', source):subscribe(sink)
 

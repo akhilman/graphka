@@ -22,6 +22,7 @@ function M.service(config, source, scheduler)
   local api_table = app
   local sink = api.api(config, api_table, 'app', source)
   api_table.reload = function() return pcall(package.reload) end
+  api_table.purge = function() sink:onNext({topic='purge'}) end
 
   return sink
 

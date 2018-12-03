@@ -8,6 +8,8 @@ local util = require 'util'
 local default_config = {
   migrations = './migrations',
   timeout = 10,
+  purge_interval = 600,
+  purge_message_limit = 100000,
   services = {
     'api',
     'session',
