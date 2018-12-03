@@ -13,28 +13,26 @@ end
 
 local migrations = fio.pathjoin(dir, 'migrations')
 
-local test_app = {}
+local real_init = app.init
+local real_destroy = app.destroy
 
-test_app.__index = app
-
-function test_app.init(cfg)
+function app.init(cfg)
   cfg = cfg or {}
   cfg = util.merge_tables(
     cfg,
     { migrations = migrations }
   )
 
-  app.init(cfg)
+  real_init(cfg)
   box.spacer:makemigration('init')
   box.spacer:migrate_up()
-  app.destroy()
+  real_destroy()
 
-  app.init(cfg)
-  fiber.sleep(0.1)
+  real_init(cfg)
 end
 
-function test_app.destroy()
-  app.destroy()
+function app.destroy()
+  real_destroy()
   if cleanup then
     local files = util.concatenate(
       fio.glob(fio.pathjoin(migrations, '*')),
@@ -48,4 +46,4 @@ function test_app.destroy()
   end
 end
 
-return setmetatable(test_app, app)
+return app
