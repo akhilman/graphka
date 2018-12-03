@@ -56,6 +56,7 @@ function app.init(config)
         :subscribe(app.hub)
     end
     subscribtions[name] = {source_sub, sink_sub}
+    source:onNext({ topic = 'setup' })
   end
   function on_service_error(name, serv, err)
     for _m, sub in pairs(subscribtions[name]) do
@@ -74,9 +75,8 @@ function app.init(config)
       init_service(name, serv)
     end
   end
-
-  app.hub:onNext({ topic = 'ready' })
-
+  app.scheduler:wait_idle()
+  log.info('Application is ready')
 end
 
 function app.destroy()

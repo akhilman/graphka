@@ -139,7 +139,7 @@ function M.publish(func_map, module_topic, api_topic, source, pass_call)
     :map(util.revpartial(call, pass_call))
 
   local publish_sink = source
-    :filter(util.itemeq('topic', 'ready'))
+    :filter(util.itemeq('topic', 'setup'))
     :map(function()
       return rx.Observable.fromTable(func_map, pairs, true)
     end)

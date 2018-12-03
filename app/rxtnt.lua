@@ -12,7 +12,11 @@ FiberScheduler.__tostring = rx.util.constant('FiberScheduler')
 --- Creates a new FiberScheduler.
 -- @returns {FiberScheduler}
 function FiberScheduler.create()
-  return setmetatable({}, FiberScheduler)
+  local self = {}
+  self.tasks = {}
+  self.last_id = 0
+  self.task_finished = fiber.cond()
+  return setmetatable(self, FiberScheduler)
 end
 
 --- Schedules an action to run at a future point in time.
@@ -22,16 +26,35 @@ end
 function FiberScheduler:schedule(action, delay, ...)
 
   local args = rx.util.pack(...)
+  local task
+  local id = self.last_id + 1
+  self.last_id = id
 
-  local task = fiber.create(function()
+  task = fiber.create(function()
     fiber.sleep(delay / 1000)
-    return action(rx.util.unpack(args))
+    local ok, ret = pcall(action, rx.util.unpack(args))
+    self.tasks[tostring(id)] = nil
+    self.task_finished:broadcast()
+    if not ok then
+      log.error('Error in scheduled task: ' .. ret)
+      error(ret)
+    end
+    return ret
   end)
+  self.tasks[tostring(id)] = task
 
   return rx.Subscription.create(function()
     task:cancel()
+    self.tasks[tostring(id)] = nil
+    self.task_finished:broadcast()
   end)
 
+end
+
+function FiberScheduler:wait_idle()
+  while next(self.tasks) do
+    self.task_finished:wait()
+  end
 end
 
 --- @class ObservableTrigger
