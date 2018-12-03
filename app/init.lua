@@ -28,7 +28,9 @@ function app.init(config)
   app.scheduler = rxtnt.FiberScheduler.create()
   app.hub = rx.BehaviorSubject.create()
 
-  app.hub:dump('hub', require('json').encode)  -- debug
+  if box.cfg.log_level >= 7 then
+    app.hub:dump('hub', require('json').encode)  -- debug
+  end
 
   box.spacer = require 'spacer'({
       migrations = app.config.migrations,
