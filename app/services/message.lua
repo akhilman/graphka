@@ -17,7 +17,7 @@ function methods.add_message(node_name, schema, offset, data)
   local message = record.Message.from_map{
     node_id = node.id,
     schema = schema,
-    offset = util.truth(offset) or 0,
+    offset = util.truth(offset) and offset or 0,
     data = data
   }
   return db.message.add(message)
