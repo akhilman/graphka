@@ -39,7 +39,7 @@ function M.service(config, source, scheduler)
   source:subscribe(rx.util.noop, events.stop, events.stop)
   events:delay(0.01, scheduler):subscribe(sink)
 
-  api.publish(methods, 'session', 'api', source, true):subscribe(sink)
+  api.publish(methods, 'session', 'app', source, true):subscribe(sink)
 
   local success, session = pcall(db.session.get, box.session.id())
   if not success then

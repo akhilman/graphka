@@ -69,7 +69,7 @@ function M.service(config, source, scheduler)
 
   local sink = rx.Subject.create()
 
-  api.publish(methods, 'message', 'api', source):subscribe(sink)
+  api.publish(methods, 'message', 'app', source):subscribe(sink)
 
   return sink
 end

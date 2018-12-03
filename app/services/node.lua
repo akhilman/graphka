@@ -117,7 +117,7 @@ function M.service(config, source, scheduler)
   source:subscribe(rx.util.noop, events.stop, events.stop)
   events:delay(0.01, scheduler):subscribe(sink)
 
-  api.publish(methods, 'node', 'api', source, true):subscribe(sink)
+  api.publish(methods, 'node', 'app', source, true):subscribe(sink)
 
   source
     :filter(function(msg) return msg.topic == 'session_removed' end)

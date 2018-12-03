@@ -31,7 +31,7 @@ function M.service(config, source, scheduler)
 
   local sink = rx.Subject.create()
 
-  api.publish(methods, 'test', 'api', source):subscribe(sink)
+  api.publish(methods, 'test', 'app', source):subscribe(sink)
 
   source
     :filter(util.itemeq('topic', 'test_call'))

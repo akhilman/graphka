@@ -20,7 +20,7 @@ function M.service(config, source, scheduler)
   --- Public API
 
   local api_table = app
-  local sink = api.api(config, api_table, 'api', source)
+  local sink = api.api(config, api_table, 'app', source)
   api_table.reload = function() return pcall(package.reload) end
 
   return sink
