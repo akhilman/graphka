@@ -19,8 +19,12 @@ function M.service(config, source, scheduler)
 
   --- Public API
 
+  local sink = rx.Subject.create()
+
   local api_table = app
-  local sink = api.api(config, api_table, 'app', source)
+  api.api(config, api_table, 'app', source)
+    :delay(0, scheduler)
+    :subscribe(sink)
   api_table.reload = function() return pcall(package.reload) end
   api_table.purge = function() sink:onNext({topic='purge'}) end
 

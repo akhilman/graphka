@@ -122,7 +122,7 @@ function M.service(config, source, scheduler)
 
   local events = db.message.observe()
   source:subscribe(rx.util.noop, events.stop, events.stop)
-  events:subscribe(sink)
+  events:delay(0, scheduler):subscribe(sink)
 
   local purge_ctrl = fiber.channel()
   fiber.create(purge_loop, config, purge_ctrl)

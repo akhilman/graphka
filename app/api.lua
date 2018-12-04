@@ -37,23 +37,18 @@ function M.api(config, api_table, api_topic, source)
       cond = fiber.cond()
     }
     pending_calls[tostring(call_id)] = call
-    local task = fiber.create(function()
-      sink:onNext({
-        topic = call_topic,
-        result_topic = result_topic,
-        method = method,
-        call_id = call_id,
-        args = args,
-        session_id = session_id
-      })
-    end)
+    sink:onNext({
+      topic = call_topic,
+      result_topic = result_topic,
+      method = method,
+      call_id = call_id,
+      args = args,
+      session_id = session_id
+    })
     if not call.result then
       local ok = call.cond:wait(config.timeout + 1)
       if not ok then
         call.result = { success = false, result = 'Call timeout' }
-      end
-      if task:status() ~= 'dead' then
-        task:cancel()
       end
     end
     local msg = call.result

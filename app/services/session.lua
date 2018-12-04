@@ -37,7 +37,7 @@ function M.service(config, source, scheduler)
 
   local events = db.session.observe(source)
   source:subscribe(rx.util.noop, events.stop, events.stop)
-  events:subscribe(sink)
+  events:delay(0, scheduler):subscribe(sink)
 
   api.publish(methods, 'session', 'app', source, true):subscribe(sink)
 
