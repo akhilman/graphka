@@ -6,7 +6,6 @@ spacer:space({
     { name = 'id', type = 'unsigned' },
     { name = 'node_id', type = 'unsigned' },
     { name = 'offset', type = 'number' },
-    { name = 'schema', type = 'string', is_nullable = true },
     { name = 'data', type = 'any', is_nullable = true },
   },
   indexes = {
