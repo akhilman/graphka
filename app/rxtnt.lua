@@ -44,7 +44,9 @@ function FiberScheduler:schedule(action, delay, ...)
   self.tasks[tostring(id)] = task
 
   return rx.Subscription.create(function()
-    task:cancel()
+    if task:status() ~= 'dead' then
+      task:cancel()
+    end
     self.tasks[tostring(id)] = nil
     self.task_finished:broadcast()
   end)
