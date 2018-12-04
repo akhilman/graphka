@@ -4,6 +4,15 @@ Dataflow graph framework for Tarantool
 
 [![Build Status](https://travis-ci.com/akhilman/graphka.svg?branch=master)](https://travis-ci.com/akhilman/graphka)
 
+## TODO
+[x] Sessions.
+[x] Nodes.
+[x] Messages.
+[ ] Key/value storage.
+[ ] Tasks.
+[ ] Example client.
+[ ] Setup travis.
+
 ## Commands
 * `make dep` - Installs dependencies to ./.rocks folder
 * `make run` - Runs Tarantool instance locally inside the ./.tnt/init folder.
