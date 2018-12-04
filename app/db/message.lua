@@ -236,6 +236,47 @@ function M.remove(node_id, limit)
     return n_removed
 end
 
+-- Observe
+
+function M.observe()
+
+  local message_index_trigger = rxtnt.ObservableTrigger.create(function(...)
+    box.space.message_index:on_replace(...)
+  end)
+
+  local events = message_index_trigger:map(function(old, new)
+    old = old and record.MessageIndex.from_tuple(old) or nil
+    new = new and record.MessageIndex.from_tuple(new) or nil
+    if not old then
+      return {
+        topic = 'message_added',
+        node_id = new.node_id,
+        message_id = new.id,
+        offset = new.offset
+      }
+    elseif not new then
+      return {
+        topic = 'message_removed',
+        node_id = old.node_id,
+        message_id = old.id,
+        offset = old.offset
+      }
+    else
+      return {
+        topic = 'message_altered',
+        node_id = new.node_id,
+        message_id = new.id
+      }
+    end
+  end)
+
+  events.stop = function ()
+    message_index_trigger:stop()
+  end
+
+  return events
+end
+
 return {
   message = M
 }

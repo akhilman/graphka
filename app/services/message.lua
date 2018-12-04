@@ -120,6 +120,10 @@ function M.service(config, source, scheduler)
 
   local sink = rx.Subject.create()
 
+  local events = db.message.observe()
+  source:subscribe(rx.util.noop, events.stop, events.stop)
+  events:subscribe(sink)
+
   local purge_ctrl = fiber.channel()
   fiber.create(purge_loop, config, purge_ctrl)
   local function force_purge() purge_ctrl:put('force') end
