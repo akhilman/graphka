@@ -65,6 +65,7 @@ function app.init(config)
       sub:unsubscribe()
     end
     subscribtions[name] = nil
+    err = err or ''
     log.error('Error in service "' .. name .. '": ' .. err)
     fiber.sleep(1)
     init_service(name, serv)
