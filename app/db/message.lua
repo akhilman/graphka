@@ -1,4 +1,3 @@
-local db_node = require 'db.node'
 local fun = require 'fun'
 local record = require 'record'
 local rx = require 'rx'
