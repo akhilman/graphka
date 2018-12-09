@@ -36,7 +36,7 @@ local message = db.message.add(
   record.Message.from_map({
     node_id = node.id,
     offset = clock.time(),
-    data = 'hello'
+    content = 'hello'
   })
 )
 

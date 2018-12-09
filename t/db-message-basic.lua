@@ -34,7 +34,7 @@ success, result = pcall(
   record('message').from_map({
     node_id = 255,
     offset = start_offset,
-    data = 'hello'
+    content = 'hello'
   })
 )
 test:ok(not success, 'Can not add message if node not exist')
@@ -67,7 +67,7 @@ fun.iter(nodes)
         db.message.add(record('message').from_map({
           node_id = node.id,
           offset = offset,
-          data = string.format("Node: %s, message %d", node.name, n)
+          content = string.format("Node: %s, message %d", node.name, n)
         }))
       end)
   end)
@@ -79,7 +79,7 @@ success, result = pcall(
   record('message').from_map({
     node_id = nodes[1].id,
     offset = start_offset,
-    data = 'hello'
+    content = 'hello'
   })
 )
 test:ok(not success, 'Can not add message with offset less then last one')

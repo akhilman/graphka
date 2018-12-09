@@ -12,12 +12,12 @@ local M = {}
 
 local methods = {}
 
-function methods.add_message(node_name, offset, data)
+function methods.add_message(node_name, offset, content)
   local node = db.node.get_by_name(node_name)
   local message = record.Message.from_map{
     node_id = node.id,
     offset = util.truth(offset) and offset or 0,
-    data = data
+    content = content
   }
   return db.message.add(message)
 end
