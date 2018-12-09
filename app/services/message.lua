@@ -67,7 +67,7 @@ local function purge_loop(config, control_chan, pending_nodes, forced)
     local cmd = control_chan:get(interval)
     if cmd == 'stop' then
       return
-    elseif cmd == 'force' then
+    elseif cmd == 'purge' then
       forced = true
       pending_nodes = db.message.iter_summary():totable()
     end
@@ -121,15 +121,15 @@ function M.service(config, source, scheduler)
   local sink = rx.Subject.create()
 
   local events = db.message.observe()
-  source:subscribe(rx.util.noop, events.stop, events.stop)
+  source:filter(util.itemeq('topic', 'stop')):subscribe(events.stop)
   events:delay(0, scheduler):subscribe(sink)
 
   local purge_ctrl = fiber.channel()
   fiber.create(purge_loop, config, purge_ctrl)
-  local function force_purge() purge_ctrl:put('force') end
-  local function stop_purge() purge_ctrl:put('stop') end
-  source:subscribe(rx.util.noop, stop_purge, stop_purge)
-  source:filter(util.itemeq('topic', 'purge')):subscribe(force_purge)
+  source:filter(function(msg)
+      return fun.index(msg.topic, {'purge', 'stop'})
+    end)
+    :subscribe(function(msg) purge_ctrl:put(msg.topic) end)
 
   api.publish(methods, 'message', 'app', source):subscribe(sink)
 

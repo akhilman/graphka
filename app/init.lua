@@ -82,6 +82,7 @@ end
 
 function app.destroy()
   log.info('app "graphka" destroy')
+  app.hub:onNext({topic='stop'})
   app.hub:onCompleted()
   fiber.sleep(0.1)
 end

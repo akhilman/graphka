@@ -114,7 +114,7 @@ function M.service(config, source, scheduler)
   local sink = rx.Subject.create()
 
   local events = db.node.observe()
-  source:subscribe(rx.util.noop, events.stop, events.stop)
+  source:filter(util.itemeq('topic', 'stop')):subscribe(events.stop)
   events:delay(0, scheduler):subscribe(sink)
 
   api.publish(methods, 'node', 'app', source, true):subscribe(sink)

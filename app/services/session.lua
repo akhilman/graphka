@@ -5,6 +5,7 @@ local fun = require 'fun'
 local log = require 'log'
 local record = require 'record'
 local rx = require 'rx'
+local util = require 'util'
 
 local M = {}
 
@@ -33,10 +34,10 @@ function M.service(config, source, scheduler)
   local sink = rx.Subject.create()
 
   local conn_events = db.session.observe_connections()
-  source:subscribe(rx.util.noop, conn_events.stop, conn_events.stop)
+  source:filter(util.itemeq('topic', 'stop')):subscribe(conn_events.stop)
 
   local events = db.session.observe(source)
-  source:subscribe(rx.util.noop, events.stop, events.stop)
+  source:filter(util.itemeq('topic', 'stop')):subscribe(events.stop)
   events:delay(0, scheduler):subscribe(sink)
 
   api.publish(methods, 'session', 'app', source, true):subscribe(sink)
