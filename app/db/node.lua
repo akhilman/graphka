@@ -166,6 +166,30 @@ function M.disconnect(input_id, output_id)
   return record.Wire.from_tuple(row)
 end
 
+-- Name resolver
+-- Adds node='node_name' field to table by node_id field.
+
+function M.make_name_resolver()
+  local all_nodes = {}
+  local node
+  local function resolve(table)
+    local formatted
+    if table._schema then
+      formatted = table:to_map()
+    else
+      formatted = table.copy(table)
+    end
+    node = all_nodes[table.node_id]
+    if not node then
+      node = M.get(table.node_id)
+      all_nodes[node.id] = node
+    end
+    formatted.node = node.name
+    return formatted
+  end
+  return resolve
+end
+
 -- Observe
 
 function M.observe()

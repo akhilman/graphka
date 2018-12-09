@@ -27,6 +27,7 @@ function methods.get_messages_by_id(node_name, min_id, max_id, limit)
   local node = db.node.get_by_name(node_name)
   return db.message.iter_by_id(node.id, min_id, max_id)
     :take_n(limit)
+    :map(db.node.make_name_resolver())
     :totable()
 end
 
@@ -42,6 +43,7 @@ function methods.get_messages(node_names, offset, limit, get_prev)
     :map(util.itemgetter('id'))
   return db.message.iter(node_ids, offset, get_prev)
     :take_n(limit)
+    :map(db.node.make_name_resolver())
     :totable()
 end
 
@@ -53,6 +55,7 @@ function methods.message_summary()
     fun.iter(nodes)
       :map(util.itemgetter('id'))
       :map(db.message.summary)
+      :map(db.node.make_name_resolver())
   ):tomap()
 end
 
