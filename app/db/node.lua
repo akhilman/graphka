@@ -72,14 +72,18 @@ end
 function M.get(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.node:get(id)
-  assertup(row, 'No such node')
+  if not row then
+    return nil
+  end
   return record.Node.from_tuple(row)
 end
 
 function M.get_by_name(name)
   assertup(type(name) == 'string', 'name must be string')
   local row = box.space.node.index['name']:get(name)
-  assertup(row, string.format('No such node "%s".', name))
+  if not row then
+    return nil
+  end
   return record.Node.from_tuple(row)
 end
 
@@ -162,7 +166,9 @@ function M.disconnect(input_id, output_id)
   assertup(type(input_id) == 'number', 'id must be integer')
   assertup(type(output_id) == 'number', 'id must be integer')
   local row = box.space.wire:delete({input_id, output_id})
-  assertup(row, "No such node connection")
+  if not row then
+    return nil
+  end
   return record.Wire.from_tuple(row)
 end
 

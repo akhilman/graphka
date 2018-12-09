@@ -19,7 +19,8 @@ function methods.list_sessions(call)
 end
 
 function methods.rename_session(call, name)
-  db.session.rename(call.session_id, name)
+  local session = db.session.rename(call.session_id, name)
+  assert(session)
 end
 
 --- Service
@@ -42,8 +43,8 @@ function M.service(config, source, scheduler)
 
   api.publish(methods, 'session', 'app', source, true):subscribe(sink)
 
-  local success, session = pcall(db.session.get, box.session.id())
-  if not success then
+  local session = db.session.get(box.session.id())
+  if not session then
     xpcall(function() db.session.add(
       record('session').create(box.session.id(), 'server', '', clock.time()))
     end, log.error)

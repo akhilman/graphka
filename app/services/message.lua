@@ -14,6 +14,7 @@ local methods = {}
 
 function methods.add_message(node_name, offset, content)
   local node = db.node.get_by_name(node_name)
+  assertup(node, string.format('No such node "%s"', node_name))
   local message = record.Message.from_map{
     node_id = node.id,
     offset = util.truth(offset) and offset or 0,
@@ -25,6 +26,7 @@ end
 function methods.get_messages_by_id(node_name, min_id, max_id, limit)
   limit = util.truth(limit) and limit or 10000
   local node = db.node.get_by_name(node_name)
+  assert(node, string.format('No sucn node %s', node_name))
   return db.message.iter_by_id(node.id, min_id, max_id)
     :take_n(limit)
     :map(db.node.make_name_resolver())
@@ -39,7 +41,12 @@ function methods.get_messages(node_names, offset, limit, get_prev)
   assertup(type(limit) == 'number', 'limit should be integer or nil')
 
   local node_ids = fun.iter(node_names)
-    :map(db.node.get_by_name)
+    :map(function(name)
+        local node = db.node.get_by_name(name)
+        if node then return node
+        else error(string.format('No such node %s', name))
+        end
+      end)
     :map(util.itemgetter('id'))
   return db.message.iter(node_ids, offset, get_prev)
     :take_n(limit)
@@ -90,10 +97,10 @@ local function purge_loop(config, control_chan, pending_nodes, forced)
                           summary.node_id))
 
   local to_remove = 0
-  local ok, node = pcall(db.node.get, summary.node_id)
-  if not ok then
+  local node = db.node.get(summary.node_id)
+  if not node then
     to_remove = summary.count
-  elseif ok and node.history_size > 0 then
+  elseif node and node.history_size > 0 then
     to_remove = math.max(0, summary.count - node.history_size)
   end
 

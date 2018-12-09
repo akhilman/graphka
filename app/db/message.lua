@@ -30,7 +30,9 @@ function M.summary(node_id)
     summary = record.MessageSummary.from_tuple(row)
   else
     row = box.space.node:get(node_id)
-    assertup(row, 'No node with id ' .. node_id)
+    if not row then
+      return nil
+    end
     summary = record.MessageSummary.from_map({node_id=node_id, count=0})
   end
   return summary
@@ -87,7 +89,9 @@ end
 function M.get(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.message:get(id)
-  assertup(row, 'No such message')
+  if not row then
+    return nil
+  end
   return record.Message.from_tuple(row)
 end
 

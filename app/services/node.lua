@@ -55,18 +55,21 @@ end
 function methods.enable_node(call, name)
   assert(type(name) == 'string', 'name must be string')
   local node = db.node.get_by_name(name)
+  assert(node, string.format('No such node "%s"', name))
   db.node.alter(node.id, {enabled = true})
 end
 
 function methods.disable_node(call, name)
   assert(type(name) == 'string', 'name must be string')
   local node = db.node.get_by_name(name)
+  assert(node, string.format('No such node "%s"', name))
   db.node.alter(node.id, {enabled = false})
 end
 
 function methods.remove_node(call, name)
   assert(type(name) == 'string', 'name must be string')
   local node = db.node.get_by_name(name)
+  assert(node, string.format('No such node "%s"', name))
   local removed = db.node.remove(node.id)
   return #removed
 end
@@ -82,6 +85,9 @@ function methods.connect_nodes(call, input, output, params)
 
   local input_node = db.node.get_by_name(input)
   local output_node = db.node.get_by_name(output)
+  assert(input_node, string.format('No such node "%s"', input))
+  assert(output_node, string.format('No such node "%s"', output))
+
   params = params or {}
   local input_required = fun.operator.truth(params.input_required)
   local output_required = fun.operator.truth(params.output_required)
@@ -98,6 +104,8 @@ function methods.disconnect_nodes(call, input, output)
 
   local input_node = db.node.get_by_name(input)
   local output_node = db.node.get_by_name(output)
+  assert(input_node, string.format('No such node "%s"', input))
+  assert(output_node, string.format('No such node "%s"', output))
 
   db.node.disconnect(input_node.id, output_node.id)
 end

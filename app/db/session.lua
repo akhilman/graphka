@@ -25,21 +25,27 @@ function M.rename(id, name)
   local row = box.space.session:update(id, {
     {'=', F.session.name, name}
   })
-  assertup(row, "No such session")
+  if not row then
+    return nil
+  end
   return record.Session.from_tuple(row)
 end
 
 function M.remove(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.session:delete(id)
-  assertup(row, "No such session")
+  if not row then
+    return nil
+  end
   return record.Session.from_tuple(row)
 end
 
 function M.get(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.session:get(id)
-  assertup(row, "No such session")
+  if not row then
+    return nil
+  end
   return record.Session.from_tuple(row)
 end
 
