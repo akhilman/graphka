@@ -243,38 +243,26 @@ end
 
 function M.observe()
 
-  local message_index_trigger = rxtnt.ObservableTrigger.create(function(...)
-    box.space.message_index:on_replace(...)
+  local message_summary_trigger = rxtnt.ObservableTrigger.create(function(...)
+    box.space.message_summary:on_replace(...)
   end)
 
-  local events = message_index_trigger:map(function(old, new)
-    old = old and record.MessageIndex.from_tuple(old) or nil
-    new = new and record.MessageIndex.from_tuple(new) or nil
-    if not old then
-      return {
-        topic = 'message_added',
-        node_id = new.node_id,
-        message_id = new.id,
-        offset = new.offset
-      }
-    elseif not new then
-      return {
-        topic = 'message_removed',
-        node_id = old.node_id,
-        message_id = old.id,
-        offset = old.offset
-      }
-    else
-      return {
-        topic = 'message_altered',
-        node_id = new.node_id,
-        message_id = new.id
-      }
-    end
-  end)
+  local events = message_summary_trigger:map(function(old, new)
+      old = old and record.MessageSummary.from_tuple(old) or nil
+      new = new and record.MessageSummary.from_tuple(new) or nil
+      if not old or new.last_id ~= old.last_id then
+        return {
+          topic = 'message_added',
+          node_id = new.node_id,
+          message_id = new.last_id,
+          offset = new.last_offset
+        }
+      end
+    end)
+    :filter(fun.operator.truth)
 
   events.stop = function ()
-    message_index_trigger:stop()
+    message_summary_trigger:stop()
   end
 
   return events

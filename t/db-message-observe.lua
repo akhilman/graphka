@@ -11,7 +11,7 @@ tnt.cfg{}
 app.init{}
 
 local test = tap.test("db.node: create remove")
-test:plan(11)
+test:plan(6)
 
 local success, ret
 
@@ -42,13 +42,8 @@ local message = db.message.add(
 
 test:is(#events, 1, '1 event')
 
-db.message.remove(node.id, 1)
-
-test:is(#events, 2, '2 event')
-
 for _, n, topic in fun.enumerate({
   'message_added',
-  'message_removed'
 }) do
   test:is(events[n].topic, topic,
     string.format('Event %s topic is ok', topic))
