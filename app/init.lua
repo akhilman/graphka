@@ -43,6 +43,7 @@ function app.init(config)
   -- Load services
   local on_service_error
   local init_service
+  local sources = {}
   local subscribtions = {}
   function init_service(name, serv)
     log.info(string.format('Starting "%s" service.', name))
@@ -55,6 +56,7 @@ function app.init(config)
         :catch(util.partial(on_service_error, name, serv))
         :subscribe(app.hub)
     end
+    sources[name] = source
     subscribtions[name] = {source_sub, sink_sub}
     source:onNext({ topic = 'setup' })
   end
@@ -62,7 +64,9 @@ function app.init(config)
     for _m, sub in pairs(subscribtions[name]) do
       sub:unsubscribe()
     end
+    sources[name]:onNext({ topic = 'stop' })
     subscribtions[name] = nil
+    sources[name] = nil
     err = err or ''
     log.error('Error in service "' .. name .. '": ' .. err)
     fiber.sleep(1)
