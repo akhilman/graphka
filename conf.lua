@@ -16,4 +16,5 @@ box = {
 app = {
     migrations = './migrations',
     automigrate = false,
+    enable_test_service = true,
 }

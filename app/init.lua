@@ -10,13 +10,14 @@ local default_config = {
   timeout = 10,
   purge_interval = 600,
   purge_message_limit = 100000,
-  services = {
-    'api',
-    'session',
-    'node',
-    'message',
-    'test'
-  }
+  enable_test_service = false,
+}
+
+local services = {
+  'api',
+  'session',
+  'node',
+  'message',
 }
 
 local app = {
@@ -41,6 +42,7 @@ function app.init(config)
   require 'schema'
 
   -- Load services
+  local to_start
   local on_service_error
   local init_service
   local sources = {}
@@ -73,8 +75,12 @@ function app.init(config)
     init_service(name, serv)
     return true
   end
+  to_start = services
+  if app.config.enable_test_service then
+    table.insert(to_start, 'test')
+  end
   local serv
-  for _, name in ipairs(app.config.services) do
+  for _, name in ipairs(to_start) do
     serv = require('services.' .. name).service
     if serv then
       init_service(name, serv)

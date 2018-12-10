@@ -5,7 +5,7 @@ local tap = require 'tap'
 local tnt = require 't.tnt'
 
 tnt.cfg{}
-app.init{ timeout = 1 }
+app.init{ timeout = 1, enable_test_service = true}
 
 local test = tap.test("Echo module")
 test:plan(5)
@@ -23,7 +23,7 @@ success, responce = app.delay(10)
 test:is(success, false, 'Test API timeout error')
 
 app.unprotected_error('Error')
-fiber.sleep(1.5)
+fiber.sleep(2)
 success, responce = app.echo('Hello world!')
 test:is(success, true, 'Service restarted after error')
 
