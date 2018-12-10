@@ -13,19 +13,26 @@ local assertup = util.assertup
 
 local M = {}
 
+-- Returns true if node is realy outdated
+local function is_node_outdated(node_id)
+  local offset
+  local summary = db.message.summary(node_id)
+  if summary then
+    offset = summary.last_offset
+  else
+    offset = 0
+  end
+  return db.node.iter_inputs(node_id)
+    :map(util.itemgetter('id'))
+    :map(db.message.summary)
+    :map(util.itemgetter('last_offset'))
+    :filter(util.truth)
+    :any(util.partial(fun.operator.lt, offset))
+end
+
 -- Methods
 
-local function make_methods(config, node_cond, offset_cond, task_cond)
-
-  -- Returns true if any node's input have greater offset
-  local function is_node_outdated(node)
-    local offset = db.task.get_node_state(node.id).offset
-    return db.node.iter_inputs(node.id)
-      :map(util.itemgetter('id'))
-      :map(db.message.summary)
-      :map(util.itemgetter('last_offset'))
-      :any(util.partial(fun.operator.lt, offset))
-  end
+local function make_methods(config, node_cond, outdated_cond, task_cond)
 
   -- Sorts nodes by node_state atime
   local function sort_by_atime(nodes)
@@ -57,21 +64,43 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
     return nodes
   end
 
-  -- Adds task to databse for this node with deadline
+  -- Removes task from database
+  local function release(task)
+    assertup(task._schema == 'task', 'task should be task record')
+    local res = db.task.remove(task.id)
+    assertup(res, string.format(
+      'Task #%d not registered in database', task.id))
+  end
+
+  -- Adds task to database for this node with deadline
   local function acquire(nodes, session_id, task_lifetime, deadline)
     local task
+    local state
+    local summary
+    local message_id
+    local offset
     local ok, result
     repeat
       for _, node in ipairs(nodes) do
         if db.task.exist_for_node(node.id) then
           ok = false
         else
+          state = db.task.get_node_state(node.id)
+          summary = db.message.summary(node.id)
+          if summary and util.truth(summary.last_id) then
+            message_id = summary.last_id
+            offset = summary.last_offset
+          else
+            message_id = NULL
+            offset = node.start_offset
+          end
           ok, result = pcall(
             db.task.add,
             record.Task.from_map({
               node_id = node.id,
               session_id = session_id,
-              offset = 0,
+              message_id = message_id,
+              offset = offset,
               expires = clock.time() + task_lifetime,
             })
           )
@@ -84,7 +113,10 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
       end
     until task or not task_cond:wait(math.max(0, deadline - clock.time()))
     if task then
-      db.task.touch_node_state(task.node_id)
+      db.task.set_node_state(task.node_id, {
+          atime = clock.time(),
+          outdated = false
+        })
     end
     return task
   end
@@ -92,28 +124,38 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
   -- Save as acquire but only when node outdated
   local function acquire_outdated(nodes, session_id, task_lifetime, deadline)
     local task
+    local node
     local outdated
     repeat
-      outdated = fun.iter(nodes):filter(is_node_outdated):totable()
+      outdated = fun.iter(nodes)
+        :filter(function (node)
+            return db.task.get_node_state(node.id).outdated
+          end)
+        :totable()
       if #outdated ~= 0 then
         task = acquire(outdated, session_id, task_lifetime, deadline)
-        if task and not is_node_outdated(
-            fun.iter(outdated)
-              :filter(util.itemeq('id', task.node_id))
-              :nth(1)
-            ) then
+        if task then
+          node = fun.iter(outdated)
+            :filter(util.itemeq('id', task.node_id))
+            :nth(1)
+          if not is_node_outdated(node.id) then
+            release(task)
             task = nil
+          end
         end
       end
-    until task or not offset_cond:wait(math.max(0, deadline - clock.time()))
+    until task or not outdated_cond:wait(math.max(0, deadline - clock.time()))
     return task
   end
 
   -- Adds fields to task table
   local function format_task(task)
+    local node = db.node.get(task.node_id)
+    local summary = db.message.summary(task.node_id)
+    local offset = summary and summary.last_offset or node.start_offset
     local formatted_task = task:to_map()
-    formatted_task.node = db.node.get(task.node_id).name
-    formatted_task.offset = db.task.get_node_state(task.node_id).offset
+    formatted_task.node = node.name
+    formatted_task.offset = offset
     formatted_task.session = db.session.get(task.session_id):to_map()
     formatted_task.session_id = nil
     formatted_task.exprired = clock.time() > task.expires
@@ -123,42 +165,28 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
   -- Adds messages to task
   local function fill_task(task, limit)
 
-    local offset = db.task.get_node_state(task.node_id).offset
-    local summary = db.message.summary(task.node_id)
-
     local resolve_node = db.node.make_name_resolver()
-
     local filled_task = resolve_node(task)
 
-    filled_task.last_message = (
-      util.truth(summary.last_id)
-      and resolve_node(db.message.get(summary.last_id))
-      or NULL
-    )
+    filled_task.message_id = nil
+
+    if util.truth(task.message_id) then
+      filled_task.last_message = resolve_node(
+        db.message.get(task.message_id))
+    else
+      filled_task.last_message = NULL
+    end
+
     filled_task.input_messages = db.message.iter(
         db.node.iter_inputs(task.node_id)
           :map(util.itemgetter('id'))
           :totable(),
-        offset,
+        filled_task.offset,
         true
       )
       :map(resolve_node)
       :take_n(limit)
       :totable()
-
-    if #filled_task.input_messages ~= 0 then
-      offset = math.max(
-        offset,
-        filled_task.input_messages[#filled_task.input_messages].offset
-      )
-    end
-
-    if util.truth(filled_task.last_message) then
-      offset = math.max(offset, filled_task.last_message.offset)
-    end
-
-
-    filled_task.offset = offset
 
     return filled_task
   end
@@ -187,7 +215,6 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
       return nil
     end
     filled_task = fill_task(task, limit)
-    db.task.set_offset(task.id, filled_task.offset)
     return filled_task
   end
 
@@ -209,7 +236,6 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
       return nil
     end
     filled_task = fill_task(task, limit)
-    db.task.set_offset(task.id, filled_task.offset)
     return filled_task
   end
 
@@ -219,19 +245,18 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
     db.task.set_expires(task_id, clock.time() + timeout)
   end
 
-  function methods.ack_task(call, task_id, offset)
-    local task = db.task.get(task_id)
-    assert(task, string.format('No such task #%d', task_id))
-    offset = util.truth(offset) and offset or task.offset
-    db.task.set_node_state(task.node_id, offset)
-    db.task.remove(task.id)
-  end
-
   function methods.release_task(call, task_id)
     local task = db.task.get(task_id)
     assert(task, string.format('No such task #%d', task_id))
-    db.task.touch_node_state(task.node_id)
-    db.task.remove(task.id)
+    local summary = db.message.summary(task.node_id)
+    if task.message_id ~= summary.last_id
+        and is_node_outdated(task.node_id) then
+      db.task.set_node_state(task.node_id, {
+        atime = clock.time(),
+        outdated = true
+      })
+    end
+    release(task)
   end
 
   function methods.list_tasks(call)
@@ -247,12 +272,10 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
         :map(function(node)
             local task = db.task.get_by_node(node.id)
             local state = db.task.get_node_state(node.id)
-            local outdated = is_node_outdated(node)
             return {
               task = task and format_task(task) or NULL,
-              offset = state and state.offset or NULL,
               atime = state and state.atime or NULL,
-              outdated = outdated,
+              outdated = state and state.outdated or false
             }
           end)
     ):tomap()
@@ -283,7 +306,7 @@ local function purge_loop(config, control_chan)
     :filter(function(id) return not db.node.get(id) end)
     :map(db.task.clear_node_state)
     :length()
-  log.verbose(string.format("%d orphaned offset removed", n_removed))
+  log.verbose(string.format("%d orphaned node states removed", n_removed))
 
   return purge_loop(config, control_chan)
 end
@@ -298,7 +321,7 @@ function M.service(config, source, scheduler)
   local sink = rx.Subject.create()
 
   local node_cond = fiber.cond()
-  local offset_cond = fiber.cond()
+  local outdated_cond = fiber.cond()
   local task_cond = fiber.cond()
 
   -- Events
@@ -312,7 +335,10 @@ function M.service(config, source, scheduler)
     :subscribe(function(msg)
         db.task.iter_by_session_id(msg.session_id)
           :map(util.itemgetter('id'))
-          :each(db.task.remove)
+          :map(db.task.remove)
+          :map(util.itemgetter('node_id'))
+          :filter(is_node_outdated)
+          :each(util.revpartial(db.task.set_node_state, { outdated = true }))
       end)
 
   -- Wakeup on new node
@@ -320,15 +346,42 @@ function M.service(config, source, scheduler)
     :filter(util.itemeq('topic', 'node_added'))
     :subscribe(function() node_cond:broadcast() end)
 
-  -- Wakeup on new offset
-  source
-    :filter(util.itemeq('topic', 'offset_reached'))
-    :subscribe(function() offset_cond:broadcast() end)
-
   -- Wakeup on task removed
   source
     :filter(util.itemeq('topic', 'task_removed'))
     :subscribe(function() task_cond:broadcast() end)
+
+  -- Wakeup on node outdated
+  source
+    :filter(util.itemeq('topic', 'node_outdated'))
+    :subscribe(function() outdated_cond:broadcast() end)
+
+  -- Mark outdated on new message
+  source
+    :filter(util.itemeq('topic', 'message_added'))
+    :subscribe(function(msg)
+        local count = db.node.iter_outputs(msg.node_id)
+          :map(util.itemgetter('id'))
+          :map(util.revpartial(db.task.set_node_state, { outdated = true }))
+          :length()
+        log.debug(string.format(
+            '%d nodes marketd outdated by new message in node %d',
+            count, msg.node_id
+          ))
+      end)
+
+  -- Mark outdated on new wire
+  source
+    :filter(util.itemeq('topic', 'node_connected'))
+    :subscribe(function(msg)
+        local state = db.task.set_node_state(msg.output_id, {outdated = true})
+        if state then
+          log.debug(string.format(
+              'Node %d marketd outdated by new input connection',
+              msg.output_id
+            ))
+        end
+      end)
 
   -- Expired tasks cleaner
   local purge_ctrl = fiber.channel()
@@ -340,7 +393,7 @@ function M.service(config, source, scheduler)
 
   -- API
   api.publish(
-      make_methods(config, node_cond, offset_cond, task_cond),
+      make_methods(config, node_cond, outdated_cond, task_cond),
       'task', 'app', source, true
     ):subscribe(sink)
 

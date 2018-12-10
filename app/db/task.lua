@@ -72,17 +72,6 @@ function M.add(task)
   return record.Task.from_tuple(row)
 end
 
-function M.set_offset(id, offset)
-  assertup(type(id) == 'number', 'id must be integer')
-  local row = box.space.task:update(id, {
-    { '=', F.task.offset, offset }
-  })
-  if not row then
-    return nil
-  end
-  return record.Task.from_tuple(row)
-end
-
 function M.set_expires(id, expires)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.task:update(id, {
@@ -99,55 +88,35 @@ function M.remove(id)
   return record.Task.from_tuple(row)
 end
 
--- Node offset
+-- Node state
 
 function M.get_node_state(node_id)
   assertup(type(node_id) == 'number', 'node_id must be integer')
   local row = box.space.node_state:get(node_id)
   if not row then
-    local node_row = box.space.node:get(node_id)
-    if not node_row then
+    if not box.space.node:count(node_id) == 0 then
       return nil
     end
-    local node = record.Node.from_tuple(node_row)
     return record.NodeState.from_map({
-      node_id = node.id,
-      offset = node.start_offset,
+      node_id = node_id,
+      outdated = false,
       atime = 0,
     })
   end
   return record.NodeState.from_tuple(row)
 end
 
-function M.set_node_state(node_id, offset)
-  local old_offset = M.get_node_state(node_id).offset
+function M.set_node_state(node_id, params)
+  local old_state = M.get_node_state(node_id)
   local atime = clock.time()
-  assertup(offset >= old_offset,
-           'New offset should be greater or equal to old one')
-  if offset > old_offset then
-    box.space.node_state:upsert({
-      node_id,
-      offset,
-      atime
-    }, {
-      { '=', F.node_state.offset, offset },
-      { '=', F.node_state.atime, atime }
-    })
+  local new_state = old_state:copy()
+  local update = {}
+  for k, v in pairs(params) do
+    new_state[k] = v
+    table.insert(update, { '=', F.node_state[k], v })
   end
-  return record.NodeState.create(node_id, offset, atime)
-end
-
-function M.touch_node_state(node_id)
-  local old_offset = M.get_node_state(node_id).offset
-  local atime = clock.time()
-  box.space.node_state:upsert({
-    node_id,
-    old_offset,
-    atime
-  }, {
-    { '=', F.node_state.atime, atime }
-  })
-  return record.NodeState.create(node_id, old_offset, atime)
+  box.space.node_state:upsert(new_state:to_tuple(), update)
+  return new_state
 end
 
 function M.clear_node_state(node_id)
@@ -171,7 +140,7 @@ function M.observe()
     box.space.task:on_replace(...)
   end)
 
-  local offset_trigger = rxtnt.ObservableTrigger.create(function(...)
+  local state_trigger = rxtnt.ObservableTrigger.create(function(...)
     box.space.node_state:on_replace(...)
   end)
 
@@ -184,7 +153,6 @@ function M.observe()
           node_id = new.node_id,
           task_id = new.id,
           session_id = new.session_id,
-          offset = new.offset,
           expires = new.expires
         }
         return msg
@@ -193,8 +161,7 @@ function M.observe()
           topic = 'task_removed',
           node_id = old.node_id,
           task_id = old.id,
-          session_id = old.session_id,
-          offset = old.offset
+          session_id = old.session_id
         }
       else
         return {
@@ -202,27 +169,27 @@ function M.observe()
           node_id = new.node_id,
           task_id = new.id,
           session_id = new.session_id,
-          offset = new.offset,
           expires = new.expires
         }
       end
     end)
 
-  local offset_events = offset_trigger:map(function(old, new)
+  local state_events = state_trigger:map(function(old, new)
       old = old and record.NodeState.from_tuple(old) or nil
       new = new and record.NodeState.from_tuple(new) or nil
-      if new and (not old or new.offset > old.offset) then
-        local msg =  {
-          topic = 'offset_reached',
-          node_id = new.node_id,
-          offset = new.offset
-        }
-        return msg
+      if new then
+        if new.outdated and (not old or not old.outdated) then
+          local msg =  {
+            topic = 'node_outdated',
+            node_id = new.node_id,
+          }
+          return msg
+        end
       end
     end)
     :filter(fun.operator.truth)
 
-  local events = task_events:merge(offset_events)
+  local events = task_events:merge(state_events)
 
   events.stop = function ()
     task_trigger:stop()

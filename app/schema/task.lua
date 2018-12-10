@@ -6,6 +6,7 @@ spacer:space({
     { name = 'id', type = 'unsigned' },
     { name = 'node_id', type = 'unsigned' },
     { name = 'session_id', type = 'unsigned' },
+    { name = 'message_id', type = 'unsigned' },
     { name = 'offset', type = 'number' },
     { name = 'expires', type = 'number' },
   },
@@ -27,7 +28,7 @@ spacer:space({
   name = 'node_state',
   format = {
     { name = 'node_id', type = 'unsigned' },
-    { name = 'offset', type = 'number' },
+    { name = 'outdated', type = 'boolean' },
     { name = 'atime', type = 'number' },
   },
   indexes = {
@@ -38,4 +39,3 @@ spacer:space({
     temporary = false,
   }
 })
-
