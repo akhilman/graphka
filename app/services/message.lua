@@ -12,9 +12,16 @@ local M = {}
 
 local methods = {}
 
-function methods.add_message(node_name, offset, content)
-  local node = db.node.get_by_name(node_name)
-  assertup(node, string.format('No such node "%s"', node_name))
+function methods.add_message(node_name_or_task_id, offset, content)
+  local node
+  if type(node_name_or_task_id) == 'string' then
+    node = db.node.get_by_name(node_name)
+  else
+    local task = db.task.get(node_name_or_task_id)
+    assertup(task, string.format('No such task #%d', node_name_or_task_id))
+    node = db.node.get(task.node_id)
+  end
+  assertup(node, string.format('No such node "%s"', node_name_or_task_id))
   local message = record.Message.from_map{
     node_id = node.id,
     offset = util.truth(offset) and offset or 0,
