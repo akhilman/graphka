@@ -15,7 +15,7 @@ local methods = {}
 function methods.add_message(node_name_or_task_id, offset, content)
   local node
   if type(node_name_or_task_id) == 'string' then
-    node = db.node.get_by_name(node_name)
+    node = db.node.get_by_name(node_name_or_task_id)
   else
     local task = db.task.get(node_name_or_task_id)
     assertup(task, string.format('No such task #%d', node_name_or_task_id))
