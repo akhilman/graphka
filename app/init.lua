@@ -8,6 +8,7 @@ local util = require 'util'
 local default_config = {
   migrations = './migrations',
   timeout = 10,
+  task_lifetime = 600,
   messages_per_task = 10000,
   purge_interval = 600,
   purge_message_limit = 100000,

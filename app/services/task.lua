@@ -58,7 +58,7 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
   end
 
   -- Adds task to databse for this node with deadline
-  local function acquire(nodes, session_id, timeout, deadline)
+  local function acquire(nodes, session_id, task_lifetime, deadline)
     local task
     local ok, result
     repeat
@@ -72,7 +72,7 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
               node_id = node.id,
               session_id = session_id,
               offset = 0,
-              expires = clock.time() + timeout,
+              expires = clock.time() + task_lifetime,
             })
           )
         end
@@ -90,13 +90,13 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
   end
 
   -- Save as acquire but only when node outdated
-  local function acquire_outdated(nodes, session_id, timeout, deadline)
+  local function acquire_outdated(nodes, session_id, task_lifetime, deadline)
     local task
     local outdated
     repeat
       outdated = fun.iter(nodes):filter(is_node_outdated):totable()
       if #outdated ~= 0 then
-        task = acquire(outdated, session_id, timeout, deadline)
+        task = acquire(outdated, session_id, task_lifetime, deadline)
         if task and not is_node_outdated(
             fun.iter(outdated)
               :filter(util.itemeq('id', task.node_id))
@@ -171,6 +171,7 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
     local task
     local filled_task
     local deadline
+    local task_lifetime = config.task_lifetime
     limit = limit or config.messages_per_task
     limit = math.min(limit, config.messages_per_task)
     timeout = timeout or config.timeout
@@ -181,7 +182,7 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
       return nil
     end
     sort_by_atime(nodes)
-    task = acquire(nodes, call.session_id, timeout, deadline)
+    task = acquire(nodes, call.session_id, task_lifetime, deadline)
     if not task then
       return nil
     end
@@ -195,6 +196,7 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
     local task
     local filled_task
     local deadline
+    local task_lifetime = config.task_lifetime
     limit = limit or config.messages_per_task
     limit = math.min(limit, config.messages_per_task)
     timeout = timeout or config.timeout
@@ -202,8 +204,7 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
     deadline = clock.time() + timeout
     nodes = select_nodes(node_masks, deadline)
     sort_by_atime(nodes)
-    task = acquire_outdated(
-        nodes, call.session_id, timeout, deadline)
+    task = acquire_outdated(nodes, call.session_id, task_lifetime, deadline)
     if not task then
       return nil
     end
