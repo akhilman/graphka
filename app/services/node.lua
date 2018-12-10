@@ -1,11 +1,11 @@
 local api = require 'api'
 local db = require 'db'
+local fun = require 'fun'
 local record = require 'record'
 local rx = require 'rx'
 local util = require 'util'
 
 local M = {}
-
 
 --- API
 
