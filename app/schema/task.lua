@@ -24,10 +24,11 @@ spacer:space({
 })
 
 spacer:space({
-  name = 'ack_offset',
+  name = 'node_state',
   format = {
     { name = 'node_id', type = 'unsigned' },
     { name = 'offset', type = 'number' },
+    { name = 'atime', type = 'number' },
   },
   indexes = {
     { name = 'primary', type = 'hash', unique = true, parts = { 'node_id' } },

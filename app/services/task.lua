@@ -19,7 +19,7 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
 
   -- Returns true if any node's input have greater offset
   local function is_node_outdated(node)
-    local offset = db.task.get_ack_offset(node.id).offset
+    local offset = db.task.get_node_state(node.id).offset
     return db.node.iter_inputs(node.id)
       :map(util.itemgetter('id'))
       :map(db.message.summary)
@@ -27,11 +27,11 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
       :any(util.partial(fun.operator.lt, offset))
   end
 
-  -- Sorts nodes by offset
-  local function sort_by_offset(nodes)
+  -- Sorts nodes by node_state atime
+  local function sort_by_atime(nodes)
     return table.sort(nodes, function(a, b)
-      return db.task.get_ack_offset(a.id).offset
-             < db.task.get_ack_offset(b.id).offset
+      return db.task.get_node_state(a.id).atime
+             < db.task.get_node_state(b.id).atime
     end)
   end
 
@@ -39,7 +39,8 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
   local function select_nodes(node_masks, deadline)
     node_masks = type(node_masks) == 'table' and node_masks or { node_masks }
     assertup(
-      fun.iter(node_masks)
+      #node_masks > 0
+      and fun.iter(node_masks)
         :map(type)
         :all(util.partial(fun.operator.eq, 'string')),
       'node_masks should be string or list of strings'
@@ -82,6 +83,9 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
         end
       end
     until task or not task_cond:wait(math.max(0, deadline - clock.time()))
+    if task then
+      db.task.touch_node_state(task.node_id)
+    end
     return task
   end
 
@@ -105,16 +109,11 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
     return task
   end
 
-  -- Remove task
-  local function release(task_id)
-    db.task.remove(task_id)
-  end
-
   -- Adds fields to task table
   local function format_task(task)
     local formatted_task = task:to_map()
     formatted_task.node = db.node.get(task.node_id).name
-    formatted_task.offset = db.task.get_ack_offset(task.node_id).offset
+    formatted_task.offset = db.task.get_node_state(task.node_id).offset
     formatted_task.session = db.session.get(task.session_id):to_map()
     formatted_task.session_id = nil
     formatted_task.exprired = clock.time() > task.expires
@@ -124,7 +123,7 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
   -- Adds messages to task
   local function fill_task(task, limit)
 
-    local offset = db.task.get_ack_offset(task.node_id).offset
+    local offset = db.task.get_node_state(task.node_id).offset
     local summary = db.message.summary(task.node_id)
 
     local resolve_node = db.node.make_name_resolver()
@@ -181,7 +180,7 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
     if #nodes == 0 then
       return nil
     end
-    sort_by_offset(nodes)
+    sort_by_atime(nodes)
     task = acquire(nodes, call.session_id, timeout, deadline)
     if not task then
       return nil
@@ -202,7 +201,7 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
     timeout = math.min(timeout, config.timeout)
     deadline = clock.time() + timeout
     nodes = select_nodes(node_masks, deadline)
-    sort_by_offset(nodes)
+    sort_by_atime(nodes)
     task = acquire_outdated(
         nodes, call.session_id, timeout, deadline)
     if not task then
@@ -223,22 +222,22 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
     local task = db.task.get(task_id)
     assert(task, string.format('No such task #%d', task_id))
     offset = util.truth(offset) and offset or task.offset
-    local ok, result = pcall(db.task.set_ack_offset, task.node_id, offset)
-    release(task_id)
-    if not ok then
-      error(result)
-    end
+    db.task.set_node_state(task.node_id, offset)
+    db.task.remove(task.id)
+  end
+
+  function methods.release_task(call, task_id)
+    local task = db.task.get(task_id)
+    assert(task, string.format('No such task #%d', task_id))
+    db.task.touch_node_state(task.node_id)
+    db.task.remove(task.id)
   end
 
   function methods.list_tasks(call)
     return db.task.iter():map(format_task):totable()
   end
 
-  function methods.release_task(call, task_id)
-    release(task_id)
-  end
-
-  function methods.task_summary()
+  function methods.task_summary(call)
     local nodes = db.node.iter():totable()
     return fun.zip(
       fun.iter(nodes)
@@ -246,14 +245,13 @@ local function make_methods(config, node_cond, offset_cond, task_cond)
       fun.iter(nodes)
         :map(function(node)
             local task = db.task.get_by_node(node.id)
-            task = task and format_task(task) or NULL
-            local offset = db.task.get_ack_offset(node.id)
-            offset = offset and offset.offset or NULL
+            local state = db.task.get_node_state(node.id)
             local outdated = is_node_outdated(node)
             return {
-              task = task,
-              offset = offset,
-              outdated = outdated
+              task = task and format_task(task) or NULL,
+              offset = state and state.offset or NULL,
+              atime = state and state.atime or NULL,
+              outdated = outdated,
             }
           end)
     ):tomap()
@@ -279,10 +277,10 @@ local function purge_loop(config, control_chan)
     :length()
   log.verbose(string.format("%d expired tasks removed", n_removed))
 
-  local n_removed = db.task.iter_ack_offsets()
+  local n_removed = db.task.iter_node_states()
     :map(util.itemgetter('node_id'))
     :filter(function(id) return not db.node.get(id) end)
-    :map(db.task.clear_ack_offset)
+    :map(db.task.clear_node_state)
     :length()
   log.verbose(string.format("%d orphaned offset removed", n_removed))
 
