@@ -1,48 +1,17 @@
 local util = require 'util'
 local rx = require 'rx'
+local msgpack = require 'msgpack'
 
+local NULL = msgpack.NULL
 local assertup = util.assertup
 
 local M = {}
 
 --- @class Record
 
-local Record = {}
+local function new_record(schema)
 
-function Record:__index(key)
-  local fields = rawget(getmetatable(self), '_fields')
-  key = type(key) == 'number' and fields[key] or key
-  if fun.index(key, fields) then
-    return rawget(self, key)
-  else
-    local v = getmetatable(self)[key]
-    if v then
-      return v
-    end
-  end
-  error(string.format('No such field "%s"', key), 2)
-end
-
-function Record:__newindex(key, value)
-  local fields = rawget(getmetatable(self), '_fields')
-  key = type(key) == 'number' and fields[key] or key
-  if not fun.index(key, fields) then
-    error(string.format('No such field "%s"', key), 2)
-  end
-  return rawset(self, key, value)
-end
-
-function Record:__len()
-  return #self._fields
-end
-
-function Record:__tostring()
-  return string.format("Record(%s)", self._schema)
-end
-
-function Record.new(schema)
-
-  local New
+  local Record
 
   assert(F[schema], string.format('No such schema "%s"', schema))
   local fields = fun.iter(F[schema]):map(function(k, v) return k end):totable()
@@ -51,39 +20,60 @@ function Record.new(schema)
   local to_tuple = T[schema].tuple
   local from_tuple = T[schema].dict
 
-  New = {}
-  New._schema = schema
-  New._fields = fields
-  New.__len = rx.util.constant(#fields)
-  New.__tostring = rx.util.constant(util.snake_to_camel(schema))
-  New.__index = Record.__index
-  New.__newindex = Record.__newindex
+  Record = {}
+  Record._schema = schema
+  Record._fields = fields
+  Record.__len = rx.util.constant(#fields)
+  Record.__tostring = rx.util.constant(util.snake_to_camel(schema))
 
-  New.create = function(...)
-    return setmetatable(from_tuple({...}), New)
+  function Record:__index(key)
+    local fields = rawget(getmetatable(self), '_fields')
+    key = type(key) == 'number' and fields[key] or key
+    if fun.index(key, fields) then
+      return NULL
+    else
+      local v = rawget(getmetatable(self), key)
+      if v then
+        return v
+      end
+    end
+    error(string.format('No such field "%s"', key), 2)
   end
 
-  New.from_tuple = function(table)
-    return setmetatable(from_tuple(table), New)
+  function Record:__newindex(key, value)
+    local fields = rawget(getmetatable(self), '_fields')
+    key = type(key) == 'number' and fields[key] or key
+    if not fun.index(key, fields) then
+      error(string.format('No such field "%s"', key), 2)
+    end
+    return rawset(self, key, value)
   end
 
-  New.from_map = function(table)
-    return New.from_tuple(to_tuple(table))
+  Record.create = function(...)
+    return setmetatable(from_tuple({...}), Record)
   end
 
-  New.to_tuple = to_tuple
+  Record.from_tuple = function(table)
+    return setmetatable(from_tuple(table), Record)
+  end
 
-  New.to_map = function(self)
+  Record.from_map = function(table)
+    return Record.from_tuple(to_tuple(table))
+  end
+
+  Record.to_tuple = to_tuple
+
+  Record.to_map = function(self)
     return from_tuple(self:to_tuple())
   end
 
-  New.copy = function(self)
-    return New.from_tuple(self:to_tuple())
+  Record.copy = function(self)
+    return Record.from_tuple(self:to_tuple())
   end
 
-  setmetatable(New, Record)
+  setmetatable(Record, Record)
 
-  return New
+  return Record
 end
 
 --- Module
@@ -99,7 +89,7 @@ M.__index = function(self, key)
   end
   assertup(string.match(key, '^%u'),
            'Record classs name should starat with uppercase character')
-  val = Record.new(util.camel_to_snake(key))
+  val = new_record(util.camel_to_snake(key))
   rawset(M, key, val)
   return val
 end
