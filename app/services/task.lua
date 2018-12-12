@@ -13,6 +13,49 @@ local assertup = util.assertup
 
 local M = {}
 
+-- Adds messages to task
+local function fill_task(task, limit)
+
+  local resolve_node = db.node.make_name_resolver()
+  local filled_task = resolve_node(task)
+
+  filled_task.message_id = nil
+
+  if util.truth(task.message_id) then
+    filled_task.last_message = resolve_node(
+      db.message.get(task.message_id))
+  else
+    filled_task.last_message = NULL
+  end
+
+  filled_task.input_messages = db.message.iter(
+      db.node.iter_inputs(task.node_id)
+        :map(util.itemgetter('id'))
+        :totable(),
+      filled_task.offset,
+      true
+    )
+    :map(resolve_node)
+    :take_n(limit)
+    :totable()
+
+  return filled_task
+end
+
+-- Adds fields to task table
+local function format_task(task)
+  local node = db.node.get(task.node_id)
+  local summary = db.message.summary(task.node_id)
+  local offset = summary and summary.last_offset or node.start_offset
+  local formatted_task = task:to_map()
+  formatted_task.node = node.name
+  formatted_task.offset = offset
+  formatted_task.session = db.session.get(task.session_id):to_map()
+  formatted_task.session_id = nil
+  formatted_task.exprired = clock.time() > task.expires
+  return formatted_task
+end
+
 -- Returns true if node is realy outdated
 local function is_node_outdated(node_id)
   local offset
@@ -30,17 +73,17 @@ local function is_node_outdated(node_id)
     :any(util.partial(fun.operator.lt, offset))
 end
 
+-- Sorts nodes by node_state atime
+local function sort_by_atime(nodes)
+  return table.sort(nodes, function(a, b)
+    return db.task.get_node_state(a.id).atime
+           < db.task.get_node_state(b.id).atime
+  end)
+end
+
 -- Methods
 
 local function make_methods(config, node_cond, outdated_cond, task_cond)
-
-  -- Sorts nodes by node_state atime
-  local function sort_by_atime(nodes)
-    return table.sort(nodes, function(a, b)
-      return db.task.get_node_state(a.id).atime
-             < db.task.get_node_state(b.id).atime
-    end)
-  end
 
   -- Selects nodes by masks with deadline
   local function select_nodes(node_masks, deadline)
@@ -72,7 +115,7 @@ local function make_methods(config, node_cond, outdated_cond, task_cond)
       'Task #%d not registered in database', task.id))
   end
 
-  -- Adds task to database for this node with deadline
+  -- Adds task to database for any provided node
   local function acquire(nodes, session_id, task_lifetime, deadline)
     local task
     local state
@@ -121,7 +164,7 @@ local function make_methods(config, node_cond, outdated_cond, task_cond)
     return task
   end
 
-  -- Save as acquire but only when node outdated
+  -- Adds task to database for outdated node
   local function acquire_outdated(nodes, session_id, task_lifetime, deadline)
     local task
     local node
@@ -146,49 +189,6 @@ local function make_methods(config, node_cond, outdated_cond, task_cond)
       end
     until task or not outdated_cond:wait(math.max(0, deadline - clock.time()))
     return task
-  end
-
-  -- Adds fields to task table
-  local function format_task(task)
-    local node = db.node.get(task.node_id)
-    local summary = db.message.summary(task.node_id)
-    local offset = summary and summary.last_offset or node.start_offset
-    local formatted_task = task:to_map()
-    formatted_task.node = node.name
-    formatted_task.offset = offset
-    formatted_task.session = db.session.get(task.session_id):to_map()
-    formatted_task.session_id = nil
-    formatted_task.exprired = clock.time() > task.expires
-    return formatted_task
-  end
-
-  -- Adds messages to task
-  local function fill_task(task, limit)
-
-    local resolve_node = db.node.make_name_resolver()
-    local filled_task = resolve_node(task)
-
-    filled_task.message_id = nil
-
-    if util.truth(task.message_id) then
-      filled_task.last_message = resolve_node(
-        db.message.get(task.message_id))
-    else
-      filled_task.last_message = NULL
-    end
-
-    filled_task.input_messages = db.message.iter(
-        db.node.iter_inputs(task.node_id)
-          :map(util.itemgetter('id'))
-          :totable(),
-        filled_task.offset,
-        true
-      )
-      :map(resolve_node)
-      :take_n(limit)
-      :totable()
-
-    return filled_task
   end
 
   -- API methods
