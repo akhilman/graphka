@@ -13,6 +13,7 @@ Dataflow graph framework for Tarantool
 - [ ] Example client.
 - [ ] Documentation.
 - [ ] Setup travis.
+- [ ] Web UI.
 - [ ] Replication/sharding. (low priority)
 
 ## Commands
