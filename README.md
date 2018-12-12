@@ -8,10 +8,12 @@ Dataflow graph framework for Tarantool
 - [x] Sessions.
 - [x] Nodes.
 - [x] Messages.
-- [ ] Key/value storage.
+- [ ] ~~Key/value storage.~~
 - [ ] Tasks.
 - [ ] Example client.
+- [ ] Documentation.
 - [ ] Setup travis.
+- [ ] Replication/sharding. (low priority)
 
 ## Commands
 * `make dep` - Installs dependencies to ./.rocks folder
