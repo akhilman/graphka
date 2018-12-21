@@ -60,7 +60,7 @@ end
 local function is_node_outdated(node_id)
   local offset
   local summary = db.message.summary(node_id)
-  if summary then
+  if summary and util.truth(summary.last_offset) then
     offset = summary.last_offset
   else
     offset = 0
