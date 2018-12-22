@@ -83,10 +83,10 @@ end
 
 -- Methods
 
-local function make_methods(config, node_cond, outdated_cond, task_cond)
+local function make_methods(config, node_cond, task_cond)
 
   -- Selects nodes by masks with deadline
-  local function select_nodes(node_masks, deadline)
+  local function select_nodes(node_masks, outdated, deadline)
     node_masks = type(node_masks) == 'table' and node_masks or { node_masks }
     assertup(
       #node_masks > 0
@@ -97,11 +97,18 @@ local function make_methods(config, node_cond, outdated_cond, task_cond)
     )
     local nodes
     repeat
-      nodes = db.node.iter():filter(function(node)
+      nodes = db.node.iter()
+        :filter(util.itemgetter('enabled'))
+        :filter(function(node)
           return fun.iter(node_masks)
             :any(util.partial(fnmatch.fnmatch, node.name))
           end)
-        :totable()
+      if outdated then
+        nodes = nodes:filter(function(node)
+            return is_node_outdated(node.id)
+          end)
+      end
+      nodes = nodes:totable()
     until #nodes ~= 0
         or not node_cond:wait(math.max(0, deadline - clock.time()))
     return nodes
@@ -164,37 +171,10 @@ local function make_methods(config, node_cond, outdated_cond, task_cond)
     return task
   end
 
-  -- Adds task to database for outdated node
-  local function acquire_outdated(nodes, session_id, task_lifetime, deadline)
-    local task
-    local node
-    local outdated
-    repeat
-      outdated = fun.iter(nodes)
-        :filter(function (node)
-            return db.task.get_node_state(node.id).outdated
-          end)
-        :totable()
-      if #outdated ~= 0 then
-        task = acquire(outdated, session_id, task_lifetime, deadline)
-        if task then
-          node = fun.iter(outdated)
-            :filter(util.itemeq('id', task.node_id))
-            :nth(1)
-          if not is_node_outdated(node.id) then
-            release(task)
-            task = nil
-          end
-        end
-      end
-    until task or not outdated_cond:wait(math.max(0, deadline - clock.time()))
-    return task
-  end
-
   -- API methods
   local methods = {}
 
-  function methods.take_last(call, node_masks, limit, timeout)
+  local function take_task(last, call, node_masks, limit, timeout)
     local nodes
     local task
     local filled_task
@@ -205,7 +185,7 @@ local function make_methods(config, node_cond, outdated_cond, task_cond)
     timeout = timeout or config.timeout
     timeout = math.min(timeout, config.timeout)
     deadline = clock.time() + timeout
-    nodes = select_nodes(node_masks, deadline)
+    nodes = select_nodes(node_masks, not last, deadline)
     if #nodes == 0 then
       return nil
     end
@@ -218,26 +198,8 @@ local function make_methods(config, node_cond, outdated_cond, task_cond)
     return filled_task
   end
 
-  function methods.take_task(call, node_masks, limit, timeout)
-    local nodes
-    local task
-    local filled_task
-    local deadline
-    local task_lifetime = config.task_lifetime
-    limit = limit or config.messages_per_task
-    limit = math.min(limit, config.messages_per_task)
-    timeout = timeout or config.timeout
-    timeout = math.min(timeout, config.timeout)
-    deadline = clock.time() + timeout
-    nodes = select_nodes(node_masks, deadline)
-    sort_by_atime(nodes)
-    task = acquire_outdated(nodes, call.session_id, task_lifetime, deadline)
-    if not task then
-      return nil
-    end
-    filled_task = fill_task(task, limit)
-    return filled_task
-  end
+  methods.take_last = util.partial(take_task, true)
+  methods.take_task = util.partial(take_task, false)
 
   function methods.touch_task(call, task_id, timeout)
     timeout = util.truth(timeout) and timeout or config.timeout
@@ -321,7 +283,6 @@ function M.service(config, source, scheduler)
   local sink = rx.Subject.create()
 
   local node_cond = fiber.cond()
-  local outdated_cond = fiber.cond()
   local task_cond = fiber.cond()
 
   -- Events
@@ -346,15 +307,20 @@ function M.service(config, source, scheduler)
     :filter(util.itemeq('topic', 'node_added'))
     :subscribe(function() node_cond:broadcast() end)
 
-  -- Wakeup on task removed
+  -- Wakeup on node enabled
   source
-    :filter(util.itemeq('topic', 'task_removed'))
-    :subscribe(function() task_cond:broadcast() end)
+    :filter(util.itemeq('topic', 'node_enabled'))
+    :subscribe(function() node_cond:broadcast() end)
 
   -- Wakeup on node outdated
   source
     :filter(util.itemeq('topic', 'node_outdated'))
-    :subscribe(function() outdated_cond:broadcast() end)
+    :subscribe(function() node_cond:broadcast() end)
+
+  -- Wakeup on task removed
+  source
+    :filter(util.itemeq('topic', 'task_removed'))
+    :subscribe(function() task_cond:broadcast() end)
 
   -- Mark outdated on new message
   source
@@ -373,12 +339,14 @@ function M.service(config, source, scheduler)
   -- Mark outdated on new wire
   source
     :filter(util.itemeq('topic', 'node_connected'))
-    :subscribe(function(msg)
-        local state = db.task.set_node_state(msg.output_id, {outdated = true})
+    :map(util.itemgetter('output_id'))
+    :filter(is_node_outdated)
+    :subscribe(function(node_id)
+        local state = db.task.set_node_state(node_id, {outdated = true})
         if state then
           log.debug(string.format(
               'Node %d marketd outdated by new input connection',
-              msg.output_id
+              node_id
             ))
         end
       end)
@@ -393,7 +361,7 @@ function M.service(config, source, scheduler)
 
   -- API
   api.publish(
-      make_methods(config, node_cond, outdated_cond, task_cond),
+      make_methods(config, node_cond, task_cond),
       'task', 'app', source, true
     ):subscribe(sink)
 
