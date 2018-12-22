@@ -108,7 +108,6 @@ end
 
 function M.set_node_state(node_id, params)
   local old_state = M.get_node_state(node_id)
-  local atime = clock.time()
   local new_state = old_state:copy()
   local update = {}
   for k, v in pairs(params) do
