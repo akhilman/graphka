@@ -105,7 +105,7 @@ local function make_methods(config, node_cond, task_cond)
           end)
       if outdated then
         nodes = nodes:filter(function(node)
-            return is_node_outdated(node.id)
+            return db.task.get_node_state(node.id).outdated
           end)
       end
       nodes = nodes:totable()
