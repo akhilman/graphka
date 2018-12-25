@@ -10,7 +10,7 @@ local tnt = require 't.tnt'
 tnt.cfg{}
 app.init{}
 
-local test = tap.test("db.node: create remove")
+local test = tap.test("db.node: Observe")
 test:plan(26)
 
 local success, ret

@@ -10,7 +10,7 @@ local tnt = require 't.tnt'
 tnt.cfg{}
 app.init{}
 
-local test = tap.test("db.session: create remove")
+local test = tap.test("db.session: Observe")
 test:plan(10)
 
 local success, ret
