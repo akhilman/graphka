@@ -9,7 +9,7 @@ Dataflow graph framework for Tarantool
 - [x] Nodes.
 - [x] Messages.
 - [ ] ~~Key/value storage.~~
-- [ ] Tasks.
+- [X] Tasks.
 - [ ] Example client.
 - [ ] Documentation.
 - [ ] Setup travis.
