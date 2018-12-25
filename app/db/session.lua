@@ -40,6 +40,11 @@ function M.remove(id)
   return record.Session.from_tuple(row)
 end
 
+function M.exist(id)
+  assertup(type(id) == 'number', 'id must be integer')
+  return fun.operator.ne(box.space.session:count(id), 0)
+end
+
 function M.get(id)
   assertup(type(id) == 'number', 'id must be integer')
   local row = box.space.session:get(id)

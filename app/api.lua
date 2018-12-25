@@ -1,3 +1,4 @@
+local db = require 'db'
 local fiber = require 'fiber'
 local log = require 'log'
 local rx = require 'rx'
@@ -28,6 +29,8 @@ function M.api(config, api_table, api_topic, source)
     local call_id
     local call
     local session_id = box.session.id()
+    assert(db.session.exist(session_id),
+           string.format('Session #%d not exist', session_id))
     local args = {...}
     call_id = last_id + 1
     last_id = call_id
