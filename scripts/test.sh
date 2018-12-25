@@ -30,19 +30,20 @@ LOGFILE=/tmp/test.log
 echo -n > $LOGFILE
 
 if [ $# == 0 ]; then
-  tests=${ROOT}/t/*.lua
+  for t in ${ROOT}/t/*.lua; do
+      echo "Running `basename $t`..."
+      LUA_PATH=${LUA_PATH} LUA_CPATH=${LUA_CPATH} ${TARANTOOL} $t \
+        2>&1 \
+        | tee -a $LOGFILE \
+        || exit $?
+  done
+  if (cat $LOGFILE | grep -q '^not ok'); then
+    echo Some test failed. See $LOGFILE for details.
+    exit 1
+  fi
 else
-  tests=$@
-fi
-for t in $tests; do
+  for t in $@; do
     echo "Running `basename $t`..."
-    LUA_PATH=${LUA_PATH} LUA_CPATH=${LUA_CPATH} ${TARANTOOL} $t \
-      2>&1 \
-      | tee -a $LOGFILE \
-      || exit $?
-done
-
-if (cat $LOGFILE | grep -q '^not ok'); then
-  echo Some test failed. See $LOGFILE for details.
-  exit 1
+    LUA_PATH=${LUA_PATH} LUA_CPATH=${LUA_CPATH} ${TARANTOOL} $t
+  done
 fi
