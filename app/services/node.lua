@@ -74,6 +74,12 @@ function methods.remove_node(call, name)
   return #removed
 end
 
+function methods.get_node(call, name)
+  assert(type(name) == 'string', 'name must be string')
+  local node = db.node.get_by_name(name)
+  return format_node(node)
+end
+
 function methods.list_nodes()
   return db.node.iter():map(format_node):totable()
 end
