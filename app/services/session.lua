@@ -14,6 +14,10 @@ local M = {}
 
 local methods = {}
 
+function methods.current_session(call)
+  return db.session.get(call.session_id)
+end
+
 function methods.list_sessions(call)
   return db.session.iter():map(record('session').to_map):totable()
 end
