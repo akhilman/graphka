@@ -6,7 +6,7 @@ spacer:space({
     { name = 'id', type = 'unsigned' },
     { name = 'node_id', type = 'unsigned' },
     { name = 'session_id', type = 'unsigned' },
-    { name = 'message_id', type = 'unsigned' , is_nullable=true },
+    { name = 'message_id', type = 'number' , is_nullable=true },
     { name = 'offset', type = 'number' },
     { name = 'expires', type = 'number' },
   },
