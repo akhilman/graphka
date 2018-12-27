@@ -67,12 +67,6 @@ while true do
         local ok, result = conn:call(
           'app.add_message', {task.id, offset, content})
         assert(ok, result)
-
-        -- Clear queue
-        for _, input in ipairs(node.inputs) do
-          content.inputs[input] = {}
-        end
-
       end
     end
 
