@@ -29,7 +29,8 @@ while true do
   local name = 'example_sink'
 
   -- Get task
-  log.info(string.format('%s: Getting task for node %s', CLIENT_NAME, name))
+  log.info(string.format('%f %s: Getting task for node %s',
+                         clock.time(), CLIENT_NAME, name))
   local ok, task = conn:call('app.take_task', {name})
   assert(ok, task)
 
@@ -41,8 +42,9 @@ while true do
         :filter(function(msg) return msg.offset > task.offset end) do
 
       log.info(string.format(
-          '%s: Got message #%d with from %s with offset %f',
-          CLIENT_NAME, message.content.n, message.node, message.offset
+          '%f %s: Got message #%d with from %s with offset %f',
+          clock.time(), CLIENT_NAME,
+          message.content.n, message.node, message.offset
         ))
       offset = math.max(offset, message.offset)
     end

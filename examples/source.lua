@@ -32,12 +32,14 @@ while true do
 
   local name = NODE_NAMES[math.random(1, #NODE_NAMES)]
 
-  log.info(string.format('%s: Acquiring node %s', CLIENT_NAME, name))
+  log.info(string.format('%f %s: Acquiring node %s',
+                         clock.time(), CLIENT_NAME, name))
   local ok, task = conn:call('app.take_last', {name})
   assert(ok, task)
 
   if task == NULL then
-    log.warn(string.format('%s: Node "%s" not ready', CLIENT_NAME, name))
+    log.warn(string.format('%f %s: Node "%s" not ready',
+                           clock.time(), CLIENT_NAME, name))
 
   else
     local content = {}
@@ -48,11 +50,11 @@ while true do
       content.n = 1
     end
 
-    fiber.sleep(0.3)  -- simulate hard work
+    -- fiber.sleep(0.3)  -- simulate hard work
 
     log.info(string.format(
-        '%s: Adding message #%d to %s with offset %f',
-        CLIENT_NAME, content.n, name, offset
+        '%f %s: Adding message #%d to %s with offset %f',
+        clock.time(), CLIENT_NAME, content.n, name, offset
       ))
     local ok, result = conn:call('app.add_message', {task.id, offset, content})
     assert(ok, result)

@@ -29,7 +29,8 @@ while true do
   local name = 'example_zip'
 
   -- Get task
-  log.info(string.format('%s: Getting task for node %s', CLIENT_NAME, name))
+  log.info(string.format('%f %s: Getting task for node %s',
+                         clock.time(), CLIENT_NAME, name))
   local ok, task = conn:call('app.take_task', {name})
   assert(ok, task)
 
@@ -44,30 +45,24 @@ while true do
       content.n = 1
     end
 
-    fiber.sleep(0.3)  -- simulate hard work
+    -- fiber.sleep(0.3)  -- simulate hard work
 
-    -- Create queue for input message
     content.inputs = {}
-    for _, input in ipairs(node.inputs) do
-      content.inputs[input] = {}
-    end
 
     -- Process input messages
     local offset = 0
-    for _, message in fun.iter(task.input_messages)
-        :filter(function(msg) return msg.offset > task.offset end) do
+    for _, message in ipairs(task.input_messages) do
 
       -- Add input message to queue
-      table.insert(content.inputs[message.node], message.content.n)
+      content.inputs[message.node] = message.content.n
       offset = math.max(offset, message.offset)
 
       -- Process messages from queue when all inputs have messages
-      if fun.iter(node.inputs)
-          :all(function(n) return #content.inputs[n] > 0 end) then
-
+      if offset > task.offset and fun.iter(node.inputs) then
         log.info(string.format(
-            '%s: Adding message #%d with inputs %s to %s with offset %f',
-            CLIENT_NAME, content.n, json.encode(content.inputs), name, offset
+            '%f %s: Adding message #%d with inputs %s to %s with offset %f',
+            clock.time(), CLIENT_NAME, content.n,
+            json.encode(content.inputs), name, offset
           ))
         local ok, result = conn:call(
           'app.add_message', {task.id, offset, content})
