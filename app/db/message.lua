@@ -250,7 +250,7 @@ function M.observe()
   local events = message_summary_trigger:map(function(old, new)
       old = old and record.MessageSummary.from_tuple(old) or nil
       new = new and record.MessageSummary.from_tuple(new) or nil
-      if not old or new.last_id ~= old.last_id then
+      if not old or new and new.last_id ~= old.last_id then
         return {
           topic = 'message_added',
           node_id = new.node_id,
