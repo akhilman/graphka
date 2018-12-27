@@ -30,6 +30,10 @@ function FiberScheduler:schedule(action, delay, ...)
   local id = self.last_id + 1
   self.last_id = id
 
+  if not delay then
+    delay = 0
+  end
+
   task = fiber.create(function()
     fiber.sleep(delay / 1000)
     local ok, ret = pcall(action, rx.util.unpack(args))
