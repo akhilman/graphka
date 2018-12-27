@@ -8,7 +8,7 @@ tnt.cfg{}
 app.init{ timeout = 1, enable_test_service = true}
 
 local test = tap.test("Echo module")
-test:plan(5)
+test:plan(4)
 
 local success, rep
 
@@ -21,11 +21,6 @@ test:is(success, false, 'Test error API method success')
 
 success, responce = app.delay(10)
 test:is(success, false, 'Test API timeout error')
-
-app.unprotected_error('Error')
-fiber.sleep(2)
-success, responce = app.echo('Hello world!')
-test:is(success, true, 'Service restarted after error')
 
 app.destroy()
 tnt.finish()

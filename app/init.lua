@@ -34,53 +34,43 @@ function app.init(config)
   app.scheduler = rxtnt.FiberScheduler.create()
   app.hub = rx.BehaviorSubject.create()
 
-  if box.cfg.log_level >= 7 then
-    app.hub:dump('hub', require('json').encode)  -- debug
-  end
-
   box.spacer = require 'spacer'({
       migrations = app.config.migrations,
       automigrate = app.config.automigrate
   })
   require 'schema'
 
+  local function on_error(message)
+    log.error(message)
+    app.exit()
+  end
+  app.hub:subscribe(rx.util.noop, on_error, rx.util.noop)
+
+  if box.cfg.log_level >= 7 then
+    app.hub:dump('hub', require('json').encode)  -- debug
+  end
+
   -- Load services
   local to_start
-  local on_service_error
-  local init_service
-  local sources = {}
-  local subscribtions = {}
-  function init_service(name, serv)
-    log.info(string.format('Starting "%s" service.', name))
-    local source = rx.Subject.create()
-    local source_sub = app.hub:subscribe(source)
-    local sink = serv(app.config, source, app.scheduler)
-    local sink_sub = nil
-    if sink then
-      sink_sub = sink
-        :catch(util.partial(on_service_error, name, serv))
-        :subscribe(app.hub)
-    end
-    sources[name] = source
-    subscribtions[name] = {source_sub, sink_sub}
-    source:onNext({ topic = 'setup' })
-  end
-  function on_service_error(name, serv, err)
-    for _m, sub in pairs(subscribtions[name]) do
-      sub:unsubscribe()
-    end
-    sources[name]:onNext({ topic = 'stop' })
-    subscribtions[name] = nil
-    sources[name] = nil
-    err = err or ''
-    log.error('Error in service "' .. name .. '": ' .. err)
-    fiber.sleep(1)
-    init_service(name, serv)
-    return true
-  end
   to_start = services
   if app.config.enable_test_service then
     table.insert(to_start, 'test')
+  end
+  local function init_service(name, serv)
+    log.info(string.format('Starting "%s" service.', name))
+    local source = rx.Subject.create()
+    local sink = serv(app.config, source, app.scheduler)
+    if sink then
+      local function on_next(msg)
+        app.hub:onNext(msg)
+      end
+      local function on_error(msg)
+        app.hub:onError(msg)
+      end
+      sink:subscribe(on_next, on_error)
+    end
+    app.hub:subscribe(source)
+    source:onNext({ topic = 'setup' })
   end
   local serv
   for _, name in ipairs(to_start) do
@@ -89,17 +79,22 @@ function app.init(config)
       init_service(name, serv)
     end
   end
+
   app.scheduler:wait_idle()
   log.info('Application is ready')
+
 end
 
 function app.destroy()
-  log.info('app "graphka" destroy')
+  log.info('Destroying application')
   app.hub:onNext({topic='stop'})
-  app.hub:onCompleted()
-  fiber.sleep(0.1)
+  fiber.sleep(0.3)
 end
 
+function app.exit()
+  app.destroy()
+  os.exit()
+end
 
 if package.reload then
   package.reload:register(app)
