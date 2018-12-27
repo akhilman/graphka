@@ -97,7 +97,7 @@ local function purge_loop(config, control_chan, pending_nodes, forced)
 
   local summary = table.remove(pending_nodes)
   if not summary then
-    return purge_loop(config, control_chan)
+    return purge_loop(config, control_chan, pending_nodes, forced)
   end
 
   log.debug(string.format('Purging messages form node #%d',
