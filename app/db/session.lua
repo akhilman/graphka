@@ -42,7 +42,7 @@ end
 
 function M.exist(id)
   assertup(type(id) == 'number', 'id must be integer')
-  return fun.operator.ne(box.space.session:count(id), 0)
+  return box.space.session and fun.operator.ne(box.space.session:count(id), 0)
 end
 
 function M.get(id)
