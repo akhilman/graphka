@@ -175,7 +175,9 @@ end
 -- Name resolver
 -- Adds node='node_name' field to table by node_id field.
 
-function M.make_name_resolver()
+function M.make_name_resolver(id_key, name_key)
+  id_key = id_key or 'node_id'
+  name_key = name_key or 'node_name'
   local all_nodes = {}
   local node
   local function resolve(table)
@@ -185,12 +187,12 @@ function M.make_name_resolver()
     else
       formatted = table.copy(table)
     end
-    node = all_nodes[table.node_id]
+    node = all_nodes[table[id_key]]
     if not node then
       node = M.get(table.node_id)
       all_nodes[node.id] = node
     end
-    formatted.node = node.name
+    formatted[name_key] = node.name
     return formatted
   end
   return resolve

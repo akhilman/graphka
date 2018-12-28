@@ -44,7 +44,7 @@ while true do
       log.info(string.format(
           '%f %s: Got message #%d with from %s with offset %f',
           clock.time(), CLIENT_NAME,
-          message.content.n, message.node, message.offset
+          message.content.n, message.node_name, message.offset
         ))
       offset = math.max(offset, message.offset)
     end

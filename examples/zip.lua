@@ -37,7 +37,7 @@ while true do
   if task ~= NULL then
     local content = {}
     -- TODO add node to task itself
-    local ok, node = conn:call('app.get_node', {task.node})
+    local ok, node = conn:call('app.get_node', {task.node_name})
     assert(ok, node)
     if task.last_message ~= NULL then
       content.n = task.last_message.content.n + 1
@@ -54,7 +54,7 @@ while true do
     for _, message in ipairs(task.input_messages) do
 
       -- Add input message to queue
-      content.inputs[message.node] = message.content.n
+      content.inputs[message.node_name] = message.content.n
       offset = math.max(offset, message.offset)
 
       -- Process messages from queue when all inputs have messages

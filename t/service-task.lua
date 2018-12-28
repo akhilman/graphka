@@ -22,7 +22,7 @@ local function add_message(node_name)
   local ok, message = app.add_message(
       task.id,
       offset,
-      task.node .. ' message at ' .. offset
+      task.node_name .. ' message at ' .. offset
     )
   assert(ok)
   last_offset = offset
@@ -76,13 +76,13 @@ function T.test_trigger_by_enabeling_node(test)
   test:ok(clock.time() - start_time < 1, 'Taking took less then 1 second')
   test:ok(success, 'take_task called successfully')
   test:istable(task, 'Enabling node produces a task')
-  test:is(task.node, 'Sink', 'Task\'s node')
+  test:is(task.node_name, 'Sink', 'Task\'s node')
   test:is(task.offset, 0, 'Task\'s offset')
   test:is(task.last_message, NULL, 'Task\'s last_message')
   test:is(#task.input_messages, 2, 'Task\'s input_messages has two messages')
-  test:is(task.input_messages[1].node, 'SourceA',
+  test:is(task.input_messages[1].node_name, 'SourceA',
           'Task\'s first input_messages is by SourceA')
-  test:is(task.input_messages[2].node, 'SourceB',
+  test:is(task.input_messages[2].node_name, 'SourceB',
           'Task\'s second input_messages is by SourceB')
   -- Release task
   local success, result = app.release_task(task.id)
@@ -114,11 +114,11 @@ function T.test_trigger_by_connecting_node(test)
   test:ok(clock.time() - start_time < 1, 'Taking took less then 1 second')
   test:ok(success, 'take_task called successfully')
   test:istable(task, 'Connecting node produces a task')
-  test:is(task.node, 'Sink', 'Task\'s node')
+  test:is(task.node_name, 'Sink', 'Task\'s node')
   test:is(task.offset, 0, 'Task\'s offset')
   test:is(task.last_message, NULL, 'Task\'s last_message')
   test:is(#task.input_messages, 1, 'Task\'s input_messages has two messages')
-  test:is(task.input_messages[1].node, 'SourceA',
+  test:is(task.input_messages[1].node_name, 'SourceA',
           'Task\'s first input_messages is by SourceA')
   -- Release task
   local success, result = app.release_task(task.id)
@@ -144,11 +144,11 @@ function T.test_trigger_by_adding_message(test)
   test:ok(clock.time() - start_time < 1, 'Taking took less then 1 second')
   test:ok(success, 'take_task called successfully')
   test:istable(task, 'Adding message produces a task')
-  test:is(task.node, 'Sink', 'Task\'s node')
+  test:is(task.node_name, 'Sink', 'Task\'s node')
   test:is(task.offset, 0, 'Task\'s offset')
   test:is(task.last_message, NULL, 'Task\'s last_message')
   test:is(#task.input_messages, 1, 'Task\'s input_messages has two messages')
-  test:is(task.input_messages[1].node, 'SourceA',
+  test:is(task.input_messages[1].node_name, 'SourceA',
           'Task\'s first input_messages is by SourceA')
   -- Release task
   local success, result = app.release_task(task.id)
@@ -179,7 +179,7 @@ function T.test_trigger_by_task_release(test)
   test:ok(clock.time() - start_time < 1, 'Taking took less then 1 second')
   test:ok(success, 'take_result called successfully')
   test:istable(result, 'Return value is table')
-  test:is(result.node, 'SourceA', 'Task\'s node')
+  test:is(result.node_name, 'SourceA', 'Task\'s node')
   -- Release result
   local success, result = app.release_task(result.id)
   test:ok(success, 'release_result called successfully')
@@ -196,12 +196,12 @@ function T.test_remark_outdated(test)
   local success, task = app.take_task('*', 100, 0.1)
   test:ok(success, 'take_task called successfully')
   test:istable(task, 'Return value is table')
-  test:is(task.node, 'Sink', 'Task\'s node')
+  test:is(task.node_name, 'Sink', 'Task\'s node')
   -- Add message to Sink
   app.add_message(
       task.id,
       source_msg.offset - 1,
-      task.node .. ' message at ' .. source_msg.offset - 1
+      task.node_name .. ' message at ' .. source_msg.offset - 1
     )
   -- Release task
   local success, result = app.release_task(task.id)
@@ -211,7 +211,7 @@ function T.test_remark_outdated(test)
   local success, task = app.take_task('*', 100, 0.1)
   test:ok(success, 'take_task called successfully')
   test:istable(task, 'Return value is table')
-  test:is(task.node, 'Sink', 'Task\'s node')
+  test:is(task.node_name, 'Sink', 'Task\'s node')
   -- Release task
   local success, result = app.release_task(task.id)
   test:ok(success, 'release_task called successfully')
@@ -229,29 +229,29 @@ function T.test_rotation(test)
   local success, task = app.take_last('*')
   test:ok(success, 'take_last called successfully')
   test:istable(task, 'Return value is table')
-  names[1] = task.node
+  names[1] = task.node_name
   local success, result = app.release_task(task.id)
   test:ok(success, 'release_task called successfully')
 
   local success, task = app.take_last('*')
   test:ok(success, 'take_last called successfully')
   test:istable(task, 'Return value is table')
-  test:isnt(task.node, names[1], 'Task\'s node is changed')
-  names[2] = task.node
+  test:isnt(task.node_name, names[1], 'Task\'s node is changed')
+  names[2] = task.node_name
   local success, result = app.release_task(task.id)
   test:ok(success, 'release_task called successfully')
 
   local success, task = app.take_last('*')
   test:ok(success, 'take_last called successfully')
   test:istable(task, 'Return value is table')
-  test:is(task.node, names[1], 'Task\'s node is changed again')
+  test:is(task.node_name, names[1], 'Task\'s node is changed again')
   local success, result = app.release_task(task.id)
   test:ok(success, 'release_task called successfully')
 
   local success, task = app.take_last('*')
   test:ok(success, 'take_last called successfully')
   test:istable(task, 'Return value is table')
-  test:is(task.node, names[2], 'Task\'s node is changed again')
+  test:is(task.node_name, names[2], 'Task\'s node is changed again')
   local success, result = app.release_task(task.id)
   test:ok(success, 'release_task called successfully')
 end
