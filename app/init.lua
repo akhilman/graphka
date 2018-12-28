@@ -61,13 +61,7 @@ function app.init(config)
     local source = rx.Subject.create()
     local sink = serv(app.config, source, app.scheduler)
     if sink then
-      local function on_next(msg)
-        app.hub:onNext(msg)
-      end
-      local function on_error(msg)
-        app.hub:onError(msg)
-      end
-      sink:subscribe(on_next, on_error)
+      sink:subscribe(app.hub)
     end
     app.hub:subscribe(source)
     source:onNext({ topic = 'setup' })
