@@ -248,14 +248,7 @@ end
 
 --- Purge tasks
 
-local function purge_loop(config, control_chan)
-
-  local interval = config.purge_interval
-
-  local cmd = control_chan:get(interval)
-  if cmd == 'stop' then
-    return
-  end
+local function purge_tasks()
 
   local n_removed = db.task.iter_expired(clock.time())
     :map(util.itemgetter('id'))
@@ -270,7 +263,6 @@ local function purge_loop(config, control_chan)
     :length()
   log.verbose(string.format("%d orphaned node states removed", n_removed))
 
-  return purge_loop(config, control_chan)
 end
 
 function M.service(config, source, scheduler)
@@ -352,12 +344,9 @@ function M.service(config, source, scheduler)
       end)
 
   -- Expired tasks cleaner
-  local purge_ctrl = fiber.channel()
-  fiber.create(purge_loop, config, purge_ctrl)
-  source:filter(function(msg)
-      return fun.index(msg.topic, {'purge', 'stop'})
-    end)
-    :subscribe(function(msg) purge_ctrl:put(msg.topic) end)
+  source
+    :filter(util.itemeq('topic', 'purge'))
+    :subscribe(purge_tasks)
 
   -- API
   api.publish(

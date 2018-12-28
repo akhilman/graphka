@@ -26,7 +26,9 @@ function M.service(config, source, scheduler)
     :delay(0, scheduler)
     :subscribe(sink)
   api_table.reload = function() return pcall(package.reload) end
-  api_table.purge = function() sink:onNext({topic='purge'}) end
+  api_table.purge = function()
+    sink:onNext({ topic = 'purge', force = true })
+  end
 
   return sink
 

@@ -34,18 +34,24 @@ function app.init(config)
   app.scheduler = rxtnt.FiberScheduler.create()
   app.hub = rx.BehaviorSubject.create()
 
+  app.hub
+    :filter(util.itemeq('topic', 'stop'))
+    :subscribe(function() app.scheduler:stop() end)
+
   box.spacer = require 'spacer'({
       migrations = app.config.migrations,
       automigrate = app.config.automigrate
   })
   require 'schema'
 
+  -- Exit on fault
   local function on_error(message)
     log.error(message)
     app.exit()
   end
   app.hub:subscribe(rx.util.noop, on_error, rx.util.noop)
 
+  -- Debug
   if box.cfg.log_level >= 7 then
     app.hub:dump('hub', require('json').encode)  -- debug
   end
@@ -74,7 +80,13 @@ function app.init(config)
     end
   end
 
-  app.scheduler:wait_idle()
+  -- Purge
+  local trigger = rxtnt.interval(
+      app.config.purge_interval * 1000, app.scheduler)
+  trigger
+    :map(function(n) return { topic = 'purge' } end)
+    :subscribe(app.hub)
+
   log.info('Application is ready')
 
 end
@@ -83,6 +95,7 @@ function app.destroy()
   log.info('Destroying application')
   app.hub:onNext({topic='stop'})
   fiber.sleep(0.3)
+  app.hub:onCompleted()
 end
 
 function app.exit()

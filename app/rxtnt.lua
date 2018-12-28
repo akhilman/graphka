@@ -2,6 +2,7 @@ fun = require 'fun'
 log = require 'log'
 fiber = require 'fiber'
 rx = require 'rx'
+util = require 'util'
 
 --- @class FiberScheduler
 -- @description A scheduler that uses tarantool's fiber to schedule events.
@@ -13,6 +14,7 @@ FiberScheduler.__tostring = rx.util.constant('FiberScheduler')
 -- @returns {FiberScheduler}
 function FiberScheduler.create()
   local self = {}
+  self.stopped = false
   self.tasks = {}
   self.last_id = 0
   self.task_finished = fiber.cond()
@@ -25,17 +27,24 @@ end
 -- @returns {Subscription}
 function FiberScheduler:schedule(action, delay, ...)
 
-  local args = rx.util.pack(...)
-  local task
-  local id = self.last_id + 1
-  self.last_id = id
+  if self.stopped then
+    return
+  end
 
   if not delay then
     delay = 0
   end
 
+  local args = rx.util.pack(...)
+  local task
+  local id = self.last_id + 1
+  self.last_id = id
+
   task = fiber.create(function()
     fiber.sleep(delay / 1000)
+    if self.stopped then
+      return
+    end
     local ok, ret = pcall(action, rx.util.unpack(args))
     self.tasks[tostring(id)] = nil
     self.task_finished:broadcast()
@@ -57,11 +66,31 @@ function FiberScheduler:schedule(action, delay, ...)
 
 end
 
+function FiberScheduler:stop()
+  self.stopped = true
+end
+
 function FiberScheduler:wait_idle()
   while next(self.tasks) do
     self.task_finished:wait()
   end
 end
+
+
+--- @class interval
+-- @description Create an Observable that emits a sequence of integers
+-- spaced by a given time interval
+
+local function interval(interval, scheduler)
+  return rx.Observable.create(function(observer)
+    local function tick(n)
+      observer:onNext(n)
+      scheduler:schedule(util.partial(tick, n+1), interval)
+    end
+    tick(1)
+  end)
+end
+
 
 --- @class ObservableTrigger
 -- @description Observable for tarantool triggers.
@@ -193,4 +222,5 @@ end
 return {
   FiberScheduler = FiberScheduler,
   ObservableTrigger = ObservableTrigger,
+  interval = interval,
 }

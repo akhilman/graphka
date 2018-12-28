@@ -75,55 +75,37 @@ end
 
 --- Purge messages
 
-local function purge_loop(config, control_chan, pending_nodes, forced)
+local function purge_messages(config, force)
 
-  local interval = config.purge_interval
   local limit = config.purge_message_limit
 
-  if not forced then
-    local cmd = control_chan:get(interval)
-    if cmd == 'stop' then
-      return
-    elseif cmd == 'purge' then
-      forced = true
-      pending_nodes = db.message.iter_summary():totable()
+  for _, summary in db.message.iter_summary() do
+    if not force and limit <= 0 then
+      break
     end
-    if not pending_nodes or #pending_nodes == 0 then
-      pending_nodes = db.message.iter_summary():totable()
+
+    log.debug(string.format('Purging messages form node #%d',
+                            summary.node_id))
+
+    local to_remove = 0
+    local node = db.node.get(summary.node_id)
+    if not node then
+      to_remove = summary.count
+    elseif node and node.history_size > 0 then
+      to_remove = math.max(0, summary.count - node.history_size)
     end
-  else
-    fiber.sleep(0.1)
-  end
 
-  local summary = table.remove(pending_nodes)
-  if not summary then
-    return purge_loop(config, control_chan, pending_nodes, forced)
-  end
+    if not force then
+      to_remove = math.min(to_remove, limit)
+    end
 
-  log.debug(string.format('Purging messages form node #%d',
-                          summary.node_id))
-
-  local to_remove = 0
-  local node = db.node.get(summary.node_id)
-  if not node then
-    to_remove = summary.count
-  elseif node and node.history_size > 0 then
-    to_remove = math.max(0, summary.count - node.history_size)
-  end
-
-  if to_remove > 0 then
-    local n_removed = db.message.remove(
-      summary.node_id,
-      math.min(to_remove, limit)
-    )
-    log.verbose(string.format("%d messages removed from node #%s",
-                              n_removed, summary.node_id))
-    if n_removed < to_remove then
-      table.insert(pending_nodes, db.message.summary(summary.node_id))
+    if to_remove > 0 then
+      local n_removed = db.message.remove(summary.node_id, to_remove)
+      log.verbose(string.format("%d messages removed from node #%s",
+                                n_removed, summary.node_id))
+      limit = limit - n_removed
     end
   end
-
-  return purge_loop(config, control_chan, pending_nodes, forced)
 end
 
 --- Service
@@ -141,12 +123,10 @@ function M.service(config, source, scheduler)
   source:filter(util.itemeq('topic', 'stop')):subscribe(events.stop)
   events:delay(0, scheduler):subscribe(sink)
 
-  local purge_ctrl = fiber.channel()
-  fiber.create(purge_loop, config, purge_ctrl)
-  source:filter(function(msg)
-      return fun.index(msg.topic, {'purge', 'stop'})
-    end)
-    :subscribe(function(msg) purge_ctrl:put(msg.topic) end)
+  source
+    :filter(util.itemeq('topic', 'purge'))
+    :map(util.itemgetter('force'))
+    :subscribe(util.partial(purge_messages, config))
 
   api.publish(methods, 'message', 'app', source):subscribe(sink)
 
