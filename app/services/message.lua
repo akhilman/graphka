@@ -13,15 +13,18 @@ local M = {}
 local methods = {}
 
 function methods.add_message(node_name_or_task_id, offset, content)
+  assert(type(node_name_or_task_id) == 'string'
+         or type(node_name_or_task_id) == 'number',
+         'First argument should be node name or task id')
   local node
   if type(node_name_or_task_id) == 'string' then
     node = db.node.get_by_name(node_name_or_task_id)
   else
     local task = db.task.get(node_name_or_task_id)
-    assertup(task, string.format('No such task #%d', node_name_or_task_id))
+    assert(task, string.format('No such task #%d', node_name_or_task_id))
     node = db.node.get(task.node_id)
   end
-  assertup(node, string.format('No such node "%s"', node_name_or_task_id))
+  assert(node, string.format('No such node "%s"', node_name_or_task_id))
   local message = record.Message.from_map{
     node_id = node.id,
     offset = util.truth(offset) and offset or 0,
@@ -45,7 +48,7 @@ function methods.get_messages(node_names, offset, limit, get_prev)
     node_names = { node_names }
   end
   limit = util.truth(limit) and limit or 10000
-  assertup(type(limit) == 'number', 'limit should be integer or nil')
+  assert(type(limit) == 'number', 'limit should be integer or nil')
 
   local node_ids = fun.iter(node_names)
     :map(function(name)
