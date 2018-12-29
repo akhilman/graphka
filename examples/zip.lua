@@ -34,8 +34,6 @@ while true do
   local ok, task = conn:call('app.take_outdated', {name})
   assert(ok, task)
 
-  print(require'yaml'.encode(task))
-
   if task ~= NULL then
     local state = {}
     if task.last_message ~= NULL then
