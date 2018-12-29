@@ -34,11 +34,10 @@ while true do
   local ok, task = conn:call('app.take_task', {name})
   assert(ok, task)
 
+  print(require'yaml'.encode(task))
+
   if task ~= NULL then
     local state = {}
-    -- TODO add node to task itself
-    local ok, node = conn:call('app.get_node', {task.node_name})
-    assert(ok, node)
     if task.last_message ~= NULL then
       state.n = task.last_message.content.n + 1
     else
@@ -59,7 +58,7 @@ while true do
 
       -- Process messages from state when all inputs have messages
       if offset > task.offset
-          and fun.iter(node.inputs)
+          and fun.iter(task.node.inputs)
           :all(function(name) return state.inputs[name] end) then
         log.info(string.format(
             '%f %s: Adding message #%d with inputs %s to %s with offset %f',

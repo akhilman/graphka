@@ -1,8 +1,10 @@
+local msgpack = require 'msgpack'
 local record = require 'record'
 local rx = require 'rx'
 local rxtnt = require 'rxtnt'
 local util = require 'util'
 
+local NULL = msgpack.NULL
 local assertup = util.assertup
 
 local M = {}
@@ -197,6 +199,46 @@ function M.make_name_resolver(id_key, name_key)
   end
   return resolve
 end
+
+-- Formats node
+-- Adds more information to represent the node.
+
+function M.format_node(node)
+  assert(node._schema == 'node', 'node must be node record')
+
+  local ret = node:to_map()
+
+  ret.inputs = M.iter_inputs(node.id)
+    :map(util.itemgetter('name'))
+    :totable()
+
+  ret.outputs = M.iter_outputs(node.id)
+    :map(util.itemgetter('name'))
+    :totable()
+
+  ret.requires = fun.chain(
+    M.iter_inputs(node.id, true),
+    M.iter_outputs(node.id, true)
+  ):map(util.itemgetter('name')):totable()
+
+  ret.temporary = fun.operator.truth(node.tmp_session_id)
+  ret.tmp_session_id = nil
+
+  local row = box.space.message_summary:get(node.id)
+  if row then
+    local summary = record.MessageSummary.from_tuple(row)
+    ret.first_message_offset = summary.first_offset
+    ret.last_message_offset = summary.last_offset
+    ret.message_count = summary.count
+  else
+    ret.message_first_offset = NULL
+    ret.message_last_offset = NULL
+    ret.message_count = 0
+  end
+
+  return ret
+end
+
 
 -- Observe
 

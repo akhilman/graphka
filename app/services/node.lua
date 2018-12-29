@@ -11,24 +11,6 @@ local M = {}
 
 local methods = {}
 
-local function format_node(node)
-  assert(node._schema == 'node', 'node must be node record')
-  local ret = node:to_map()
-  ret.inputs = db.node.iter_inputs(node.id)
-    :map(util.itemgetter('name'))
-    :totable()
-  ret.outputs = db.node.iter_outputs(node.id)
-    :map(util.itemgetter('name'))
-    :totable()
-  ret.requires = fun.chain(
-    db.node.iter_inputs(node.id, true),
-    db.node.iter_outputs(node.id, true)
-  ):map(util.itemgetter('name')):totable()
-  ret.temporary = fun.operator.truth(ret.tmp_session_id)
-  ret.tmp_session_id = nil
-  return ret
-end
-
 function methods.add_node(call, name, params)
   assert(type(name) == 'string', 'name must be string')
   assert(not params or type(params) == 'table', 'params must be table')
@@ -49,7 +31,7 @@ function methods.add_node(call, name, params)
   node.id = nil
   node.name = name
   node = db.node.add(node)
-  return format_node(node)
+  return db.node.format_node(node)
 end
 
 function methods.enable_node(call, name)
@@ -77,11 +59,11 @@ end
 function methods.get_node(call, name)
   assert(type(name) == 'string', 'name must be string')
   local node = db.node.get_by_name(name)
-  return format_node(node)
+  return db.node.format_node(node)
 end
 
 function methods.list_nodes()
-  return db.node.iter():map(format_node):totable()
+  return db.node.iter():map(db.node.format_node):totable()
 end
 
 function methods.connect_nodes(call, input, output, params)

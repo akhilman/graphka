@@ -17,8 +17,8 @@ local M = {}
 local function fill_task(task, limit)
 
   local resolve_node = db.node.make_name_resolver()
-  local filled_task = resolve_node(task)
-
+  local filled_task = task:to_map()
+  filled_task.node_id = nil
   filled_task.message_id = nil
 
   if util.truth(task.message_id) then
@@ -38,6 +38,8 @@ local function fill_task(task, limit)
     :map(resolve_node)
     :take_n(limit)
     :totable()
+
+  filled_task.node = db.node.format_node(db.node.get(task.node_id))
 
   return filled_task
 end
