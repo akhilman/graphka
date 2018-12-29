@@ -29,15 +29,21 @@ CLIENT_NAME = CLIENT_NAME .. '#' .. session.id
 -- Remove nodes if exists
 local ok, node_list = conn:call('app.list_nodes')
 assert(ok)
-node_list = fun.iter(node_list)
+local to_remove = fun.iter(node_list)
   :map(function(node) return node.name end)
   :filter(function(name) return fun.index(name, NODE_NAMES) end)
-  :each(function(name)
-      log.info(string.format('%f %s: Removing node %s',
-                             clock.time(), CLIENT_NAME, name))
-      local ok, result = conn:call('app.remove_node', {name})
-      assert(ok, result)
-    end)
+  :totable()
+repeat
+  local ok, task = conn:call('app.take_last', {to_remove})
+  assert(ok, task)
+  log.info(string.format('%f %s: Removing node %s',
+                         clock.time(), CLIENT_NAME, task.node.name))
+  local ok, result = conn:call('app.remove_node', {task.node.name})
+  assert(ok, result)
+  table.remove(to_remove, fun.index(task.node.name, to_remove))
+  local ok, result = conn:call('app.release_task', {task.id})
+  assert(ok, result)
+until #to_remove == 0
 
 -- Add nodes
 for _, name in ipairs(NODE_NAMES) do

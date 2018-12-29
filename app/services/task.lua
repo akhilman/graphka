@@ -213,7 +213,7 @@ local function make_methods(config, node_cond, task_cond)
     local task = db.task.get(task_id)
     assert(task, string.format('No such task #%d', task_id))
     local summary = db.message.summary(task.node_id)
-    if task.message_id ~= summary.last_id
+    if summary and task.message_id ~= summary.last_id
         and is_node_outdated(task.node_id) then
       db.task.set_node_state(task.node_id, {
         atime = clock.time(),

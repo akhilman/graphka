@@ -48,10 +48,19 @@ function methods.disable_node(call, name)
   db.node.alter(node.id, {enabled = false})
 end
 
-function methods.remove_node(call, name)
-  assert(type(name) == 'string', 'name must be string')
-  local node = db.node.get_by_name(name)
-  assert(node, string.format('No such node "%s"', name))
+function methods.remove_node(call, node_name_or_task_id)
+  assert(type(node_name_or_task_id) == 'string'
+         or type(node_name_or_task_id) == 'number',
+         'First argument should be node name or task id')
+  local node
+  if type(node_name_or_task_id) == 'string' then
+    node = db.node.get_by_name(node_name_or_task_id)
+  else
+    local task = db.task.get(node_name_or_task_id)
+    assert(task, string.format('No such task #%d', node_name_or_task_id))
+    node = db.node.get(task.node_id)
+  end
+  assert(node, string.format('No such node "%s"', node_name_or_task_id))
   local removed = db.node.remove(node.id)
   return #removed
 end
