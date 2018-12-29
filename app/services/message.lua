@@ -80,15 +80,14 @@ end
 
 local function purge_messages(config, force)
 
+  log.debug('Purging messages')
+
   local limit = config.purge_message_limit
 
   for _, summary in db.message.iter_summary() do
     if not force and limit <= 0 then
       break
     end
-
-    log.debug(string.format('Purging messages form node #%d',
-                            summary.node_id))
 
     local to_remove = 0
     local node = db.node.get(summary.node_id)
@@ -104,7 +103,7 @@ local function purge_messages(config, force)
 
     if to_remove > 0 then
       local n_removed = db.message.remove(summary.node_id, to_remove)
-      log.verbose(string.format("%d messages removed from node #%s",
+      log.verbose(string.format("%d messages removed from node #%d",
                                 n_removed, summary.node_id))
       limit = limit - n_removed
     end
