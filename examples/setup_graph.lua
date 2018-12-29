@@ -34,7 +34,7 @@ local to_remove = fun.iter(node_list)
   :filter(function(name) return fun.index(name, NODE_NAMES) end)
   :totable()
 repeat
-  local ok, task = conn:call('app.take_last', {to_remove})
+  local ok, task = conn:call('app.take_node', {to_remove})
   assert(ok, task)
   log.info(string.format('%f %s: Removing node %s',
                          clock.time(), CLIENT_NAME, task.node.name))

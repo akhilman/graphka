@@ -176,7 +176,7 @@ local function make_methods(config, node_cond, task_cond)
   -- API methods
   local methods = {}
 
-  local function take_task(last, call, node_masks, limit, timeout)
+  local function take_outdated(last, call, node_masks, limit, timeout)
     local nodes
     local task
     local filled_task
@@ -200,8 +200,8 @@ local function make_methods(config, node_cond, task_cond)
     return filled_task
   end
 
-  methods.take_last = util.partial(take_task, true)
-  methods.take_task = util.partial(take_task, false)
+  methods.take_node = util.partial(take_outdated, true)
+  methods.take_outdated = util.partial(take_outdated, false)
 
   function methods.touch_task(call, task_id, timeout)
     timeout = util.truth(timeout) and timeout or config.timeout

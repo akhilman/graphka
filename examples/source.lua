@@ -34,7 +34,7 @@ while true do
 
   log.info(string.format('%f %s: Acquiring node %s',
                          clock.time(), CLIENT_NAME, name))
-  local ok, task = conn:call('app.take_last', {name})
+  local ok, task = conn:call('app.take_node', {name})
   assert(ok, task)
 
   if task == NULL then

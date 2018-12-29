@@ -31,7 +31,7 @@ while true do
   -- Get task
   log.info(string.format('%f %s: Getting task for node %s',
                          clock.time(), CLIENT_NAME, name))
-  local ok, task = conn:call('app.take_task', {name})
+  local ok, task = conn:call('app.take_outdated', {name})
   assert(ok, task)
 
   print(require'yaml'.encode(task))

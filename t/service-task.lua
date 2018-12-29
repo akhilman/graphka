@@ -16,7 +16,7 @@ local TEST_NAME = 'Task service'
 local last_offset = clock.time()
 local function add_message(node_name)
   local offset = last_offset + math.random() * 10
-  local ok, task = app.take_last(node_name)
+  local ok, task = app.take_node(node_name)
   assert(ok)
   assert(task)
   local ok, message = app.add_message(
@@ -36,8 +36,8 @@ local T = {}
 
 function T.test_no_tasks(test)
   test:plan(2)
-  local success, result = app.take_task('*', 100, 0.2)
-  test:ok(success, 'take_task called successfully')
+  local success, result = app.take_outdated('*', 100, 0.2)
+  test:ok(success, 'take_outdated called successfully')
   test:isnil(result, 'Nodes have no tasks')
 end
 
@@ -49,8 +49,8 @@ function T.test_not_enabled(test)
   fun.iter({'SourceA', 'SourceB'})
     :each(add_message)
   -- Take task
-  local success, result = app.take_task('*', 100, 0.2)
-  test:ok(success, 'take_task called successfully')
+  local success, result = app.take_outdated('*', 100, 0.2)
+  test:ok(success, 'take_outdated called successfully')
   test:isnil(result, 'Nodes have no tasks')
 end
 
@@ -71,10 +71,10 @@ function T.test_trigger_by_enabeling_node(test)
     db.session.remove(box.session.id())
   end)
   -- Take task
-  local success, task = app.take_task('*', 100, 1)
+  local success, task = app.take_outdated('*', 100, 1)
   test:ok(clock.time() - start_time > 0.3, 'Taking took more then 0.3 second')
   test:ok(clock.time() - start_time < 1, 'Taking took less then 1 second')
-  test:ok(success, 'take_task called successfully')
+  test:ok(success, 'take_outdated called successfully')
   test:istable(task, 'Enabling node produces a task')
   test:is(task.node.name, 'Sink', 'Task\'s node')
   test:is(task.offset, 0, 'Task\'s offset')
@@ -109,10 +109,10 @@ function T.test_trigger_by_connecting_node(test)
     db.session.remove(box.session.id())
   end)
   -- Take task
-  local success, task = app.take_task('*', 100, 1)
+  local success, task = app.take_outdated('*', 100, 1)
   test:ok(clock.time() - start_time > 0.3, 'Taking took more then 0.3 second')
   test:ok(clock.time() - start_time < 1, 'Taking took less then 1 second')
-  test:ok(success, 'take_task called successfully')
+  test:ok(success, 'take_outdated called successfully')
   test:istable(task, 'Connecting node produces a task')
   test:is(task.node.name, 'Sink', 'Task\'s node')
   test:is(task.offset, 0, 'Task\'s offset')
@@ -139,10 +139,10 @@ function T.test_trigger_by_adding_message(test)
     db.session.remove(box.session.id())
   end)
   -- Take task
-  local success, task = app.take_task('*', 100, 1)
+  local success, task = app.take_outdated('*', 100, 1)
   test:ok(clock.time() - start_time > 0.3, 'Taking took more then 0.3 second')
   test:ok(clock.time() - start_time < 1, 'Taking took less then 1 second')
-  test:ok(success, 'take_task called successfully')
+  test:ok(success, 'take_outdated called successfully')
   test:istable(task, 'Adding message produces a task')
   test:is(task.node.name, 'Sink', 'Task\'s node')
   test:is(task.offset, 0, 'Task\'s offset')
@@ -158,12 +158,12 @@ end
 function T.test_trigger_by_task_release(test)
   test:plan(10)
   -- Take SourceA
-  local success, task = app.take_last('SourceA')
-  test:ok(success, 'take_last called successfully')
+  local success, task = app.take_node('SourceA')
+  test:ok(success, 'take_node called successfully')
   test:istable(task, 'Return value is table')
   -- Take it again
-  local success, result = app.take_last('SourceA', 100, 0.3)
-  test:ok(success, 'take_last called successfully')
+  local success, result = app.take_node('SourceA', 100, 0.3)
+  test:ok(success, 'take_node called successfully')
   test:isnil(result, 'Return value is nil')
   local start_time = clock.time()
   fiber.create(function()
@@ -174,7 +174,7 @@ function T.test_trigger_by_task_release(test)
     db.session.remove(box.session.id())
   end)
   -- Take task
-  local success, result = app.take_last('SourceA', 100, 1)
+  local success, result = app.take_node('SourceA', 100, 1)
   test:ok(clock.time() - start_time > 0.3, 'Taking took more then 0.3 second')
   test:ok(clock.time() - start_time < 1, 'Taking took less then 1 second')
   test:ok(success, 'take_result called successfully')
@@ -193,8 +193,8 @@ function T.test_remark_outdated(test)
   local source_msg = add_message('SourceA')
 
   -- Take task
-  local success, task = app.take_task('*', 100, 0.1)
-  test:ok(success, 'take_task called successfully')
+  local success, task = app.take_outdated('*', 100, 0.1)
+  test:ok(success, 'take_outdated called successfully')
   test:istable(task, 'Return value is table')
   test:is(task.node.name, 'Sink', 'Task\'s node')
   -- Add message to Sink
@@ -208,8 +208,8 @@ function T.test_remark_outdated(test)
   test:ok(success, 'release_task called successfully')
 
   -- Take task
-  local success, task = app.take_task('*', 100, 0.1)
-  test:ok(success, 'take_task called successfully')
+  local success, task = app.take_outdated('*', 100, 0.1)
+  test:ok(success, 'take_outdated called successfully')
   test:istable(task, 'Return value is table')
   test:is(task.node.name, 'Sink', 'Task\'s node')
   -- Release task
@@ -217,8 +217,8 @@ function T.test_remark_outdated(test)
   test:ok(success, 'release_task called successfully')
 
   -- Take task
-  local success, task = app.take_task('*', 100, 0.1)
-  test:ok(success, 'take_task called successfully')
+  local success, task = app.take_outdated('*', 100, 0.1)
+  test:ok(success, 'take_outdated called successfully')
   test:isnil(task, 'Return value is nil')
 end
 
@@ -226,30 +226,30 @@ function T.test_rotation(test)
   test:plan(15)
   local names = {}
 
-  local success, task = app.take_last('*')
-  test:ok(success, 'take_last called successfully')
+  local success, task = app.take_node('*')
+  test:ok(success, 'take_node called successfully')
   test:istable(task, 'Return value is table')
   names[1] = task.node.name
   local success, result = app.release_task(task.id)
   test:ok(success, 'release_task called successfully')
 
-  local success, task = app.take_last('*')
-  test:ok(success, 'take_last called successfully')
+  local success, task = app.take_node('*')
+  test:ok(success, 'take_node called successfully')
   test:istable(task, 'Return value is table')
   test:isnt(task.node.name, names[1], 'Task\'s node is changed')
   names[2] = task.node.name
   local success, result = app.release_task(task.id)
   test:ok(success, 'release_task called successfully')
 
-  local success, task = app.take_last('*')
-  test:ok(success, 'take_last called successfully')
+  local success, task = app.take_node('*')
+  test:ok(success, 'take_node called successfully')
   test:istable(task, 'Return value is table')
   test:is(task.node.name, names[1], 'Task\'s node is changed again')
   local success, result = app.release_task(task.id)
   test:ok(success, 'release_task called successfully')
 
-  local success, task = app.take_last('*')
-  test:ok(success, 'take_last called successfully')
+  local success, task = app.take_node('*')
+  test:ok(success, 'take_node called successfully')
   test:istable(task, 'Return value is table')
   test:is(task.node.name, names[2], 'Task\'s node is changed again')
   local success, result = app.release_task(task.id)
