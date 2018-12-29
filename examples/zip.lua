@@ -35,37 +35,39 @@ while true do
   assert(ok, task)
 
   if task ~= NULL then
-    local content = {}
+    local state = {}
     -- TODO add node to task itself
     local ok, node = conn:call('app.get_node', {task.node_name})
     assert(ok, node)
     if task.last_message ~= NULL then
-      content.n = task.last_message.content.n + 1
+      state.n = task.last_message.content.n + 1
     else
-      content.n = 1
+      state.n = 1
     end
 
     -- fiber.sleep(0.3)  -- simulate hard work
 
-    content.inputs = {}
+    state.inputs = {}
 
     -- Process input messages
     local offset = 0
     for _, message in ipairs(task.input_messages) do
 
-      -- Add input message to queue
-      content.inputs[message.node_name] = message.content.n
+      -- Add input message to state
+      state.inputs[message.node_name] = message.content.n
       offset = math.max(offset, message.offset)
 
-      -- Process messages from queue when all inputs have messages
-      if offset > task.offset and fun.iter(node.inputs) then
+      -- Process messages from state when all inputs have messages
+      if offset > task.offset
+          and fun.iter(node.inputs)
+          :all(function(name) return state.inputs[name] end) then
         log.info(string.format(
             '%f %s: Adding message #%d with inputs %s to %s with offset %f',
-            clock.time(), CLIENT_NAME, content.n,
-            json.encode(content.inputs), name, offset
+            clock.time(), CLIENT_NAME, state.n,
+            json.encode(state.inputs), name, offset
           ))
         local ok, result = conn:call(
-          'app.add_message', {task.id, offset, content})
+          'app.add_message', {task.id, offset, state})
         assert(ok, result)
       end
     end
